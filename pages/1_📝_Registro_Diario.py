@@ -87,7 +87,6 @@ if st.button("✅ GUARDAR CIERRE DE CAJA", use_container_width=True, type="prima
         st.error("Por favor ingresa el nombre del responsable.")
     else:
         with st.spinner("Guardando en base de datos..."):
-            # 1. Preparar datos para Supabase
             datos_cierre = {
                 "fecha": str(fecha_cierre),
                 "base_caja": res["base_inicial"],
@@ -97,15 +96,22 @@ if st.button("✅ GUARDAR CIERRE DE CAJA", use_container_width=True, type="prima
                 "responsable": responsable
             }
             
-            # 2. Guardar Cierre y obtener ID
             cierre_id = guardar_cierre(datos_cierre)
             
             if cierre_id:
-                # 3. Guardar Pagos vinculados al ID del cierre
                 if lista_pagos:
-                    for pago in lista_pagos:
-                        pago['cierre_id'] = cierre_id
-                    guardar_pagos(lista_pagos)
+                    pagos_formateados = []
+                    for p in lista_pagos:
+                        # Solo guardar si tiene concepto y valor
+                        if p.get('Concepto') and p.get('Valor'):
+                            pagos_formateados.append({
+                                "cierre_id": cierre_id,
+                                "concepto": p['Concepto'],
+                                "valor": p['Valor'],
+                                "metodo_pago": p['Metodo']
+                            })
+                    if pagos_formateados:
+                        guardar_pagos(pagos_formateados)
                 
                 st.success(f"¡Cierre del {fecha_cierre} guardado exitosamente!")
                 st.balloons()
