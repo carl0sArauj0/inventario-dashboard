@@ -31,11 +31,21 @@ def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingreso_nequi, li
     venta_total = ingreso_efectivo + ingreso_nequi
     
     # 4. Calcular Total de Pagos/Gastos
-    total_gastos = sum(pago['valor'] for pago in lista_pagos)
+    total_gastos = 0
     
     # 5. Clasificar pagos por método (opcional para análisis)
-    pagos_efectivo = sum(pago['valor'] for pago in lista_pagos if pago['metodo'] == 'Efectivo')
-    pagos_nequi = sum(pago['valor'] for pago in lista_pagos if pago['metodo'] == 'Nequi')
+    pagos_efectivo = 0
+    pagos_nequi = 0
+
+    for pago in lista_pagos:
+        valor = pago.get('Valor') if pago.get('Valor') is not None else 0
+        metodo = pago.get('Metodo', 'Efectivo')
+
+        total_gastos += valor
+        if metodo == 'Efectivo':
+            pagos_efectivo =+ valor
+        else:
+            pagos_nequi += valor
 
     return {
         "resumen": {
