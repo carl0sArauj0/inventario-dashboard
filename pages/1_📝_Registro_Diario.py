@@ -58,37 +58,36 @@ st.divider()
 lista_pagos = pagos_editados.to_dict('records')
 res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, efectivo_en_casa, lista_pagos)
 
+# --- SECCIÓN DE RESUMEN ---
+
 st.subheader("📊 Resumen de Ingresos")
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
-c2.metric("Nequi Total", formatear_moneda(res["nequi_total_dia"]))
-c3.metric("Efectivo en Casa", formatear_moneda(res["efectivo_en_casa"]))
-c4.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
+c1.metric("Ingreso Efectivo", formatear_moneda(res.get("ingreso_efectivo", 0)))
+c2.metric("Nequi Total", formatear_moneda(res.get("nequi_total_dia", 0)))
+c3.metric("Efectivo en Casa", formatear_moneda(res.get("efectivo_en_casa", 0)))
+c4.metric("🚀 VENTA TOTAL", formatear_moneda(res.get("total_venta_dia", 0)))
 
-# Nueva fila diseñada para los Gastos
-st.subheader("📉 Resumen de Egresos (Gastos)")
+st.subheader("📉 Resumen de Gastos (Egresos)")
 g1, g2, g3, g4 = st.columns(4)
 
 with g1:
-    st.write("**Efectivo Hoy**")
-    st.write(f"### {formatear_moneda(res['gasto_hoy'])}")
+    st.info("**Efectivo Hoy**")
+    st.write(f"### {formatear_moneda(res.get('gasto_hoy', 0))}")
 
 with g2:
-    st.write("**Efectivo Ayer**")
-    st.write(f"### {formatear_moneda(res['gasto_ayer'])}")
+    st.info("**Efectivo Ayer**")
+    st.write(f"### {formatear_moneda(res.get('gasto_ayer', 0))}")
 
 with g3:
-    st.write("**Nequi**")
-    st.write(f"### {formatear_moneda(res['gasto_nequi'])}")
+    st.info("**Nequi**")
+    st.write(f"### {formatear_moneda(res.get('gasto_nequi', 0))}")
 
 with g4:
-    st.write("**Total Gastos**")
-    st.write(f"### :red[{formatear_moneda(res['total_pagos'])}]")
+    # Mostramos el total de gastos en rojo para resaltar salida de dinero
+    st.error("**Total Gastos**")
+    st.write(f"### {formatear_moneda(res.get('total_pagos', 0))}")
 
 st.divider()
-
-# Mostrar desglose de gastos antes de guardar
-st.write(f"**Gastos de hoy:** {formatear_moneda(res['gasto_hoy'])} | **Gastos de ayer:** {formatear_moneda(res['gasto_ayer'])} | **Gastos Nequi:** {formatear_moneda(res['gasto_nequi'])}")
 
 # --- BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR CIERRE", use_container_width=True, type="primary"):
