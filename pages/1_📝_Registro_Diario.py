@@ -43,8 +43,9 @@ st.divider()
 col_in, col_out = st.columns(2)
 
 with col_in:
-    st.subheader("📱 Ingresos Digitales")
-    ingreso_nequi = st.number_input("Total Ingresos Nequi", min_value=0, step=1000)
+    st.subheader("📱 Gestión de Dinero")
+    nequi_total_dia = st.number_input("Nequi Total Día", min_value=0, step=1000)
+    efectivo_en_casa = st.number_input("Efectivo en Casa", min_value=0, step=1000)
 
 with col_out:
     st.subheader("💸 Gastos / Pagos del Día")
@@ -70,16 +71,22 @@ st.divider()
 lista_pagos = pagos_editados.to_dict('records')
 
 # Ejecutar lógica matemática
-resultados = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingreso_nequi, lista_pagos)
+resultados = procesar_cierre(
+    base_inicial, 
+    cant_billetes, 
+    cant_monedas, 
+    nequi_total_dia, 
+    efectivo_en_casa, 
+    lista_pagos
+)
 res = resultados["resumen"]
 
-st.subheader("📊 Resumen del Cierre")
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("Efectivo Contado", formatear_moneda(res["efectivo_contado"]))
-c2.metric("Ingreso Real Efectivo", formatear_moneda(res["ingreso_efectivo"]), help="Efectivo contado menos la base")
-c3.metric("Ingreso Nequi", formatear_moneda(res["ingreso_nequi"]))
-c4.metric("VENTA TOTAL DEL DÍA", formatear_moneda(res["total_venta_dia"]), delta_color="normal")
+# Mostrar Métricas
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
+m2.metric("Nequi Total Día", formatear_moneda(res["nequi_total_dia"]))
+m3.metric("Efectivo en Casa", formatear_moneda(res["efectivo_en_casa"]))
+st.subheader(f"🚀 VENTA TOTAL DEL DÍA: {formatear_moneda(res['total_venta_dia'])}")
 
 # --- BOTÓN DE GUARDAR ---
 if st.button("✅ GUARDAR CIERRE DE CAJA", use_container_width=True, type="primary"):
@@ -89,11 +96,12 @@ if st.button("✅ GUARDAR CIERRE DE CAJA", use_container_width=True, type="prima
         with st.spinner("Guardando en base de datos..."):
             datos_cierre = {
                 "fecha": str(fecha_cierre),
-                "base_caja": res["base_inicial"],
-                "ingreso_efectivo": res["ingreso_efectivo"],
-                "ingreso_nequi": res["ingreso_nequi"],
-                "total_venta_dia": res["total_venta_dia"],
-                "responsable": responsable
+        "base_caja": res["base_inicial"],
+        "ingreso_efectivo": res["ingreso_efectivo"],
+        "nequi_total_dia": res["nequi_total_dia"], 
+        "efectivo_en_casa": res["efectivo_en_casa"], 
+        "total_venta_dia": res["total_venta_dia"],
+        "responsable": responsable
             }
             
             cierre_id = guardar_cierre(datos_cierre)
