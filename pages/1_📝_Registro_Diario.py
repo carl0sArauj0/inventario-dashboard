@@ -91,6 +91,7 @@ if st.button("✅ GUARDAR CIERRE", use_container_width=True, type="primary"):
                 "fecha": str(fecha_cierre),
                 "base_caja": res["base_inicial"],
                 "ingreso_efectivo": res["ingreso_efectivo"],
+                "ingresos_nequi": res["ingresos_nequi"],
                 "nequi_total_dia": res["nequi_total_dia"],
                 "efectivo_en_casa": res["efectivo_en_casa"],
                 "total_venta_dia": res["total_venta_dia"],
