@@ -15,54 +15,34 @@ def calcular_monto_total(cantidades, valores):
         total += (cant * val)
     return total
 
-def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingreso_nequi, lista_pagos):
-    """
-    Aplica toda la lógica contable del Excel.
-    """
-    # 1. Calcular efectivo físico contado
+def procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, efectivo_en_casa, lista_pagos):
+    # 1. Calcular efectivo físico contado en caja
     total_billetes = calcular_monto_total(cant_billetes, BILLETES)
     total_monedas = calcular_monto_total(cant_monedas, MONEDAS)
     efectivo_en_caja = total_billetes + total_monedas
     
-    # 2. Calcular Ingreso Real Efectivo 
+    # 2. Ingreso Real Efectivo (Efectivo contado - Base)
     ingreso_efectivo = efectivo_en_caja - base_inicial
     
-    # 3. Calcular Venta Total del Día
-    venta_total = ingreso_efectivo + ingreso_nequi
+    # 3. TOTAL VENTA DÍA (Fórmula solicitada: (Ingreso Efectivo - Base) + Ingresos Nequi)
+    # Nota: Si Ingreso Efectivo ya es (Efectivo en caja - Base), 
+    # la fórmula se aplica así para cumplir tu requerimiento:
+    venta_total = (ingreso_efectivo) + (nequi_total_dia or 0)
     
-    # 4. Calcular Total de Pagos/Gastos
+    # 4. Cálculos de pagos
     total_gastos = 0
-    
-    # 5. Clasificar pagos por método (opcional para análisis)
-    pagos_efectivo = 0
-    pagos_nequi = 0
-
     for pago in lista_pagos:
-        valor = pago.get('Valor') if pago.get('Valor') is not None else 0
-        metodo = pago.get('Metodo', 'Efectivo')
-
-        total_gastos += valor
-        if metodo == 'Efectivo':
-            pagos_efectivo =+ valor
-        else:
-            pagos_nequi += valor
+        total_gastos += (pago.get('Valor') if pago.get('Valor') is not None else 0)
 
     return {
         "resumen": {
             "base_inicial": base_inicial,
             "efectivo_contado": efectivo_en_caja,
             "ingreso_efectivo": ingreso_efectivo,
-            "ingreso_nequi": ingreso_nequi,
+            "nequi_total_dia": nequi_total_dia,
+            "efectivo_en_casa": efectivo_en_casa,
             "total_venta_dia": venta_total,
             "total_pagos": total_gastos
-        },
-        "desglose": {
-            "billetes": dict(zip(BILLETES, cant_billetes)),
-            "monedas": dict(zip(MONEDAS, cant_monedas))
-        },
-        "pagos_detalle": {
-            "efectivo": pagos_efectivo,
-            "nequi": pagos_nequi
         }
     }
 
