@@ -39,33 +39,25 @@ st.divider()
 col_in, col_out = st.columns(2)
 with col_in:
     st.subheader("📱 Gestión de Dinero")
-    nequi_total_dia = st.number_input("Nequi Total Día", min_value=0, step=1000)
+    # Este es el valor que suma a la Venta Total
+    ingresos_nequi = st.number_input("Ingresos Nequi (Ventas del día)", min_value=0, step=1000, help="Solo lo que entró hoy por ventas")
+    # Estos son valores informativos/casa
+    nequi_total_dia = st.number_input("Nequi Total Día (Saldo App)", min_value=0, step=1000, help="Saldo total que muestra Nequi")
     efectivo_en_casa = st.number_input("Efectivo en Casa", min_value=0, step=1000)
-
-with col_out:
-    st.subheader("💸 Gastos / Pagos")
-    df_p = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
-    pagos_editados = st.data_editor(
-        df_p, num_rows="dynamic", use_container_width=True,
-        column_config={
-            "Metodo": st.column_config.SelectboxColumn("Método", options=["Efectivo hoy", "Efectivo ayer", "Nequi"], default="Efectivo hoy"),
-            "Valor": st.column_config.NumberColumn("Monto", format="$ %d")
-        }
-    )
 
 # --- SECCIÓN 4: CÁLCULOS Y RESUMEN VISUAL ---
 st.divider()
 lista_pagos = pagos_editados.to_dict('records')
-res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, efectivo_en_casa, lista_pagos)
+res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos)
 
-# --- SECCIÓN DE RESUMEN ---
+st.subheader("📊 Resumen del Día")
 
-st.subheader("📊 Resumen de Ingresos")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Ingreso Efectivo", formatear_moneda(res.get("ingreso_efectivo", 0)))
-c2.metric("Nequi Total", formatear_moneda(res.get("nequi_total_dia", 0)))
-c3.metric("Efectivo en Casa", formatear_moneda(res.get("efectivo_en_casa", 0)))
-c4.metric("🚀 VENTA TOTAL", formatear_moneda(res.get("total_venta_dia", 0)))
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
+c2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
+c3.metric("Saldo Nequi", formatear_moneda(res["nequi_total_dia"]))
+c4.metric("Efectivo Casa", formatear_moneda(res["efectivo_en_casa"]))
+c5.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
 
 st.subheader("📉 Resumen de Gastos (Egresos)")
 g1, g2, g3, g4 = st.columns(4)
