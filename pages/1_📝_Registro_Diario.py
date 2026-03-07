@@ -1,11 +1,23 @@
 import streamlit as st
 import pandas as pd
+import request 
+from streamlit_lottie import st_lottie
 from datetime import date
 from logic import BILLETES, MONEDAS, procesar_cierre, formatear_moneda
 from database import guardar_cierre, guardar_pagos, obtener_cierre_por_fecha, actualizar_cierre, supabase
 
 st.set_page_config(page_title="Cierre de Caja", page_icon="📝", layout="wide")
 st.title("📝 Registro y Actualización de Cierre")
+
+# Función para cargar animaciones Lottie
+def load_lottieurl(url):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# Elegimos una animación de éxito (puedes cambiar el link por otro de LottieFiles)
+lottie_success = load_lottieurl("https://lottie.host/6253995f-9e32-4e58-9447-e6f77f525547/vL3h5M2U5q.json") # Animación de billetes/éxito
 
 # --- 1. SELECCIÓN DE FECHA Y CARGA DE DATOS ---
 col_fecha, col_info = st.columns([1, 2])
@@ -109,6 +121,7 @@ if st.button(label_btn, use_container_width=True, type="primary"):
     if not responsable:
         st.error("Ingresa el responsable")
     else:
+        placeholder = st.empty()
         with st.spinner("Sincronizando..."):
             datos = {
                 "fecha": str(fecha_cierre),
@@ -138,5 +151,12 @@ if st.button(label_btn, use_container_width=True, type="primary"):
                          for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
             if deudas_db: supabase.table("deudas").insert(deudas_db).execute()
             
-            st.success("¡Sincronizado!")
-            st.balloons()
+        with placeholder.container():
+            st_lottie(lottie_success, height=300, key="success_anim")
+            st.success(f"🔥 ¡Cierre del {fecha_cierre} sincronizado con éxito!")
+            st.balloons() # Dejamos los globos también para más impacto
+            
+        # Esperar unos segundos y limpiar la animación (opcional)
+        import time
+        time.sleep(3)
+        placeholder.empty()
