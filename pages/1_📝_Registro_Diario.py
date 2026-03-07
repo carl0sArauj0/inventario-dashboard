@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from streamlit_lottie import st_lottie
+import time
 from datetime import date
 from logic import BILLETES, MONEDAS, procesar_cierre, formatear_moneda
 from database import guardar_cierre, guardar_pagos, obtener_cierre_por_fecha, actualizar_cierre, supabase
@@ -10,14 +11,18 @@ st.set_page_config(page_title="Cierre de Caja", page_icon="📝", layout="wide")
 st.title("📝 Registro y Actualización de Cierre")
 
 # Función para cargar animaciones Lottie
-def load_lottieurl(url):
-    r = requests.get(url)
-    if r.status_code != 200:
+def load_lottieurl(url: str):
+    try:
+        r = requests.get(url, timeout=5) # Agregamos un tiempo límite de espera
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
         return None
-    return r.json()
 
-# Elegimos una animación de éxito (puedes cambiar el link por otro de LottieFiles)
-lottie_success = load_lottieurl("https://lottie.host/6253995f-9e32-4e58-9447-e6f77f525547/vL3h5M2U5q.json") # Animación de billetes/éxito
+# Intentamos cargar una animación de éxito (esta es más estable)
+lottie_url = "https://assets5.lottiefiles.com/packages/lf20_s2lryxtd.json"
+lottie_success = load_lottieurl(lottie_url)
 
 # --- 1. SELECCIÓN DE FECHA Y CARGA DE DATOS ---
 col_fecha, col_info = st.columns([1, 2])
@@ -121,7 +126,6 @@ if st.button(label_btn, use_container_width=True, type="primary"):
     if not responsable:
         st.error("Ingresa el responsable")
     else:
-        placeholder = st.empty()
         with st.spinner("Sincronizando..."):
             datos = {
                 "fecha": str(fecha_cierre),
@@ -141,22 +145,24 @@ if st.button(label_btn, use_container_width=True, type="primary"):
             else:
                 id_existente = guardar_cierre(datos)
             
-            # Guardar Pagos
-            pagos_db = [{"cierre_id": id_existente, "concepto": p['Concepto'], "valor": p['Valor'], "metodo_pago": p['Metodo']} 
-                        for p in lista_pagos if p.get('Concepto') and p.get('Valor')]
-            if pagos_db: guardar_pagos(pagos_db)
+            if id_existente:
+                pagos_db = [{"cierre_id": id_existente, "concepto": p['Concepto'], "valor": p['Valor'], "metodo_pago": p['Metodo']} 
+                            for p in lista_pagos if p.get('Concepto') and p.get('Valor')]
+                if pagos_db: guardar_pagos(pagos_db)
+                
+                deudas_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto']} 
+                             for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
+                if deudas_db: supabase.table("deudas").insert(deudas_db).execute()
             
-            # Guardar Deudas
-            deudas_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto']} 
-                         for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
-            if deudas_db: supabase.table("deudas").insert(deudas_db).execute()
-            
+        placeholder = st.empty()
         with placeholder.container():
-            st_lottie(lottie_success, height=300, key="success_anim")
-            st.success(f"🔥 ¡Cierre del {fecha_cierre} sincronizado con éxito!")
-            st.balloons() # Dejamos los globos también para más impacto
+            # SI LA ANIMACIÓN CARGÓ, LA MUESTRA. SI NO, SOLO MUESTRA LOS GLOBOS.
+            if lottie_success:
+                st_lottie(lottie_success, height=300, key="cierre_ok")
             
-        # Esperar unos segundos y limpiar la animación (opcional)
-        import time
-        time.sleep(3)
-        placeholder.empty()
+            st.success("🔥 ¡Cierre sincronizado correctamente!")
+            st.balloons()
+            time.sleep(4) # Esperar 4 segundos para que se vea la animación
+            
+        placeholder.empty() # Limpiar la animación para que el usuario pueda seguir usando la app
+        st.rerun() # Refrescar la página para limpiar los campos
