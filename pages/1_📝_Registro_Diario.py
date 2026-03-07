@@ -66,14 +66,18 @@ st.divider()
 col_in, col_out = st.columns(2)
 with col_in:
     st.subheader("📱 Gestión de Dinero (Nequi)")
-    # Cargamos valores previos si existen
-    def_in_nequi = float(registro_previo['ingresos_nequi']) if registro_previo else 0.0
-    def_tot_nequi = float(registro_previo['nequi_total_dia']) if registro_previo else 0.0
-    def_casa = float(registro_previo['efectivo_en_casa']) if registro_previo else 0.0
+    if registro_previo:
+        def_in_nequi = float(registro_previo.get('ingresos_nequi') or 0)
+        def_tot_nequi = float(registro_previo.get('nequi_total_dia') or 0)
+        def_casa = float(registro_previo.get('efectivo_en_casa') or 0)
+    else:
+        def_in_nequi = 0.0
+        def_tot_nequi = 0.0
+        def_casa = 0.0
     
-    ingresos_nequi = st.number_input("Ingresos Nequi (Venta hoy)", value=def_in_nequi, step=1000.0)
-    nequi_total_dia = st.number_input("Nequi Total Día (Saldo App)", value=def_tot_nequi, step=1000.0)
-    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0)
+    ingresos_nequi = st.number_input("Ingresos Nequi (Venta hoy)", value=def_in_nequi, step=1000.0, key=f"nequi_v_{fecha_cierre}")
+    nequi_total_dia = st.number_input("Nequi Total Día (Saldo App)", value=def_tot_nequi, step=1000.0, key=f"nequi_s_{fecha_cierre}")
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, key=f"casa_{fecha_cierre}")
 
 with col_out:
     st.subheader("💸 Gastos / Pagos")
