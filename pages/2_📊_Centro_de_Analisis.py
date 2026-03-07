@@ -90,6 +90,13 @@ with tab_diario:
     else:
         dia = datos_dia.iloc[0]
         
+        # Mostrar los nuevos campos en el detalle diario
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Ingreso Efectivo", formatear_moneda(dia.get('ingreso_efectivo')))
+        k2.metric("Nequi Total Día", formatear_moneda(dia.get('nequi_total_dia')))
+        k3.metric("Efectivo en Casa", formatear_moneda(dia.get('efectivo_en_casa')))
+        k4.metric("Venta Total", formatear_moneda(dia.get('total_venta_dia')))
+
         c1, c2, c3 = st.columns(3)
         c1.info(f"**Responsable:** {dia['responsable']}")
         c2.success(f"**Venta Total:** {formatear_moneda(dia['total_venta_dia'])}")
