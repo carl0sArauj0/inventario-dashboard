@@ -36,6 +36,23 @@ def guardar_pagos(lista_pagos):
     except Exception as e:
         st.error(f"Error al guardar pagos: {e}")
 
+def obtener_cierre_por_fecha(fecha):
+    """Busca si ya existe un cierre para esa fecha"""
+    try:
+        res = supabase.table("cierres").select("*").eq("fecha", str(fecha)).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        return None
+
+def actualizar_cierre(cierre_id, datos_cierre):
+    """Actualiza un registro existente"""
+    try:
+        supabase.table("cierres").update(datos_cierre).eq("id", cierre_id).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error al actualizar: {e}")
+        return False
+
 # --- FUNCIONES PARA CONSULTAR DATOS (Análisis) ---
 
 def obtener_resumen_mensual():
