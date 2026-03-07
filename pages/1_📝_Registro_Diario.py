@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import request 
+import requests
 from streamlit_lottie import st_lottie
 from datetime import date
 from logic import BILLETES, MONEDAS, procesar_cierre, formatear_moneda
