@@ -7,7 +7,7 @@ from database import guardar_cierre, guardar_pagos
 st.set_page_config(page_title="Registro de Cierre", page_icon="📝", layout="wide")
 st.title("📝 Registro de Cierre de Caja")
 
-# --- SECCIÓN 1: DATOS GENERALES ---
+# --- 1. DATOS GENERALES ---
 col_head1, col_head2, col_head3 = st.columns(3)
 with col_head1:
     fecha_cierre = st.date_input("Fecha del Cierre", date.today())
@@ -18,7 +18,7 @@ with col_head3:
 
 st.divider()
 
-# --- SECCIÓN 2: CONTEO DE EFECTIVO ---
+# --- 2. CONTEO DE EFECTIVO ---
 st.subheader("💰 Conteo de Efectivo (Billetes y Monedas)")
 col_bill, col_mon = st.columns(2)
 cant_billetes = []
@@ -35,23 +35,45 @@ with col_mon:
 
 st.divider()
 
-# --- SECCIÓN 3: GESTIÓN Y PAGOS ---
+# --- 3. GESTIÓN DE DINERO Y PAGOS ---
 col_in, col_out = st.columns(2)
+
 with col_in:
     st.subheader("📱 Gestión de Dinero")
-    # Este es el valor que suma a la Venta Total
-    ingresos_nequi = st.number_input("Ingresos Nequi (Ventas del día)", min_value=0, step=1000, help="Solo lo que entró hoy por ventas")
-    # Estos son valores informativos/casa
-    nequi_total_dia = st.number_input("Nequi Total Día (Saldo App)", min_value=0, step=1000, help="Saldo total que muestra Nequi")
+    ingresos_nequi = st.number_input("Ingresos Nequi (Ventas de hoy)", min_value=0, step=1000)
+    nequi_total_dia = st.number_input("Nequi Total Día (Saldo App)", min_value=0, step=1000)
     efectivo_en_casa = st.number_input("Efectivo en Casa", min_value=0, step=1000)
 
-# --- SECCIÓN 4: CÁLCULOS Y RESUMEN VISUAL ---
+with col_out:
+    st.subheader("💸 Gastos / Pagos")
+    df_p = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
+    # AQUÍ SE DEFINE pagos_editados
+    pagos_editados = st.data_editor(
+        df_p, num_rows="dynamic", use_container_width=True,
+        column_config={
+            "Metodo": st.column_config.SelectboxColumn("Método", options=["Efectivo hoy", "Efectivo ayer", "Nequi"], default="Efectivo hoy"),
+            "Valor": st.column_config.NumberColumn("Monto", format="$ %d")
+        },
+        key="editor_pagos"
+    )
+
+# --- 4. CÁLCULOS (Ahora lista_pagos está después del editor) ---
 st.divider()
-lista_pagos = pagos_editados.to_dict('records')
-res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos)
+lista_pagos = pagos_editados.to_dict('records') # Ahora sí existe la variable
 
-st.subheader("📊 Resumen del Día")
+# Llamada a la lógica actualizada
+res = procesar_cierre(
+    base_inicial, 
+    cant_billetes, 
+    cant_monedas, 
+    ingresos_nequi, 
+    nequi_total_dia, 
+    efectivo_en_casa, 
+    lista_pagos
+)
 
+# --- 5. RESUMEN VISUAL ---
+st.subheader("📊 Resumen de Ingresos")
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
 c2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
@@ -59,40 +81,34 @@ c3.metric("Saldo Nequi", formatear_moneda(res["nequi_total_dia"]))
 c4.metric("Efectivo Casa", formatear_moneda(res["efectivo_en_casa"]))
 c5.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
 
-st.subheader("📉 Resumen de Gastos (Egresos)")
+st.subheader("📉 Resumen de Gastos")
 g1, g2, g3, g4 = st.columns(4)
-
 with g1:
     st.info("**Efectivo Hoy**")
-    st.write(f"### {formatear_moneda(res.get('gasto_hoy', 0))}")
-
+    st.write(f"### {formatear_moneda(res['gasto_hoy'])}")
 with g2:
     st.info("**Efectivo Ayer**")
-    st.write(f"### {formatear_moneda(res.get('gasto_ayer', 0))}")
-
+    st.write(f"### {formatear_moneda(res['gasto_ayer'])}")
 with g3:
     st.info("**Nequi**")
-    st.write(f"### {formatear_moneda(res.get('gasto_nequi', 0))}")
-
+    st.write(f"### {formatear_moneda(res['gasto_nequi'])}")
 with g4:
-    # Mostramos el total de gastos en rojo para resaltar salida de dinero
     st.error("**Total Gastos**")
-    st.write(f"### {formatear_moneda(res.get('total_pagos', 0))}")
+    st.write(f"### {formatear_moneda(res['total_pagos'])}")
 
+# --- 6. BOTÓN GUARDAR ---
 st.divider()
-
-# --- BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR CIERRE", use_container_width=True, type="primary"):
     if not responsable:
-        st.error("Ingresa el responsable")
+        st.error("Por favor ingresa el nombre del responsable.")
     else:
-        with st.spinner("Guardando..."):
+        with st.spinner("Guardando en Supabase..."):
             datos = {
                 "fecha": str(fecha_cierre),
                 "base_caja": res["base_inicial"],
                 "ingreso_efectivo": res["ingreso_efectivo"],
-                "ingresos_nequi": res["ingresos_nequi"],
-                "nequi_total_dia": res["nequi_total_dia"],
+                "ingresos_nequi": res["ingresos_nequi"], # Venta real Nequi
+                "nequi_total_dia": res["nequi_total_dia"], # Saldo informativo
                 "efectivo_en_casa": res["efectivo_en_casa"],
                 "total_venta_dia": res["total_venta_dia"],
                 "responsable": responsable
@@ -108,6 +124,7 @@ if st.button("✅ GUARDAR CIERRE", use_container_width=True, type="primary"):
                             "valor": p['Valor'],
                             "metodo_pago": p['Metodo']
                         })
-                guardar_pagos(pagos_db)
-            st.success("¡Guardado!")
+                if pagos_db:
+                    guardar_pagos(pagos_db)
+            st.success("¡Cierre guardado exitosamente!")
             st.balloons()
