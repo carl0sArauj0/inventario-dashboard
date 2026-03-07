@@ -53,17 +53,39 @@ with col_out:
         }
     )
 
-# --- SECCIÓN 4: CÁLCULOS ---
+# --- SECCIÓN 4: CÁLCULOS Y RESUMEN VISUAL ---
 st.divider()
 lista_pagos = pagos_editados.to_dict('records')
 res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, efectivo_en_casa, lista_pagos)
 
-st.subheader("📊 Resumen del Día")
+st.subheader("📊 Resumen de Ingresos")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
 c2.metric("Nequi Total", formatear_moneda(res["nequi_total_dia"]))
 c3.metric("Efectivo en Casa", formatear_moneda(res["efectivo_en_casa"]))
-c4.metric("VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
+c4.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
+
+# Nueva fila diseñada para los Gastos
+st.subheader("📉 Resumen de Egresos (Gastos)")
+g1, g2, g3, g4 = st.columns(4)
+
+with g1:
+    st.write("**Efectivo Hoy**")
+    st.write(f"### {formatear_moneda(res['gasto_hoy'])}")
+
+with g2:
+    st.write("**Efectivo Ayer**")
+    st.write(f"### {formatear_moneda(res['gasto_ayer'])}")
+
+with g3:
+    st.write("**Nequi**")
+    st.write(f"### {formatear_moneda(res['gasto_nequi'])}")
+
+with g4:
+    st.write("**Total Gastos**")
+    st.write(f"### :red[{formatear_moneda(res['total_pagos'])}]")
+
+st.divider()
 
 # Mostrar desglose de gastos antes de guardar
 st.write(f"**Gastos de hoy:** {formatear_moneda(res['gasto_hoy'])} | **Gastos de ayer:** {formatear_moneda(res['gasto_ayer'])} | **Gastos Nequi:** {formatear_moneda(res['gasto_nequi'])}")
