@@ -124,7 +124,11 @@ with tab_consultas:
     tipo_busqueda = st.radio("¿Qué deseas buscar?", ["Todos los Pagos/Gastos", "Historial de Cierres"])
     
     if tipo_busqueda == "Todos los Pagos/Gastos":
-        busqueda = st.text_input("Buscar por concepto (ej: Gaseosas, Maritza, etc.)")
+        metodo_filtro = st.multiselect(
+            "Filtrar por origen del dinero:", 
+            ["Efectivo hoy", "Efectivo ayer", "Nequi"], 
+            default=["Efectivo hoy", "Efectivo ayer", "Nequi"]
+        )
         if not df_p.empty:
             df_res = df_p[df_p['concepto'].str.contains(busqueda, case=False, na=False)]
             st.dataframe(df_res[['fecha', 'concepto', 'valor', 'metodo_pago']], use_container_width=True)

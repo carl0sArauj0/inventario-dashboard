@@ -59,7 +59,7 @@ with col_out:
         use_container_width=True,
         column_config={
             "Metodo": st.column_config.SelectboxColumn(
-                options=["Efectivo", "Nequi"],
+                options=["Efectivo hoy","Efectivo ayer" ,"Nequi"],
                 default="Efectivo"
             ),
             "Valor": st.column_config.NumberColumn(format="$ %d")
@@ -80,6 +80,13 @@ resultados = procesar_cierre(
     lista_pagos
 )
 res = resultados["resumen"]
+desglose = res["desglose_gastos"]
+
+st.write("### Desglose de Egresos:")
+c1, c2, c3 = st.columns(3)
+c1.write(f"📉 **De Efectivo Hoy:** {formatear_moneda(desglose['hoy'])}")
+c2.write(f"📉 **De Efectivo Ayer:** {formatear_moneda(desglose['ayer'])}")
+c3.write(f"📉 **De Nequi:** {formatear_moneda(desglose['nequi'])}")
 
 # Mostrar Métricas
 m1, m2, m3, m4 = st.columns(4)

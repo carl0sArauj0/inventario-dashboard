@@ -16,23 +16,30 @@ def calcular_monto_total(cantidades, valores):
     return total
 
 def procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, efectivo_en_casa, lista_pagos):
-    # 1. Calcular efectivo físico contado en caja
+    # Cálculos de efectivo contado e ingreso efectivo 
     total_billetes = calcular_monto_total(cant_billetes, BILLETES)
     total_monedas = calcular_monto_total(cant_monedas, MONEDAS)
     efectivo_en_caja = total_billetes + total_monedas
-    
-    # 2. Ingreso Real Efectivo (Efectivo contado - Base)
     ingreso_efectivo = efectivo_en_caja - base_inicial
+    venta_total = ingreso_efectivo + (nequi_total_dia or 0)
     
-    # 3. TOTAL VENTA DÍA (Fórmula solicitada: (Ingreso Efectivo - Base) + Ingresos Nequi)
-    # Nota: Si Ingreso Efectivo ya es (Efectivo en caja - Base), 
-    # la fórmula se aplica así para cumplir tu requerimiento:
-    venta_total = (ingreso_efectivo) + (nequi_total_dia or 0)
-    
-    # 4. Cálculos de pagos
+    # --- LÓGICA DE DESGLOSE DE GASTOS ---
     total_gastos = 0
+    gasto_efectivo_hoy = 0
+    gasto_efectivo_ayer = 0
+    gasto_nequi = 0
+    
     for pago in lista_pagos:
-        total_gastos += (pago.get('Valor') if pago.get('Valor') is not None else 0)
+        v = pago.get('Valor') if pago.get('Valor') is not None else 0
+        m = pago.get('Metodo', 'Efectivo hoy')
+        
+        total_gastos += v
+        if m == "Efectivo hoy":
+            gasto_efectivo_hoy += v
+        elif m == "Efectivo ayer":
+            gasto_efectivo_ayer += v
+        elif m == "Nequi":
+            gasto_nequi += v
 
     return {
         "resumen": {
@@ -42,7 +49,12 @@ def procesar_cierre(base_inicial, cant_billetes, cant_monedas, nequi_total_dia, 
             "nequi_total_dia": nequi_total_dia,
             "efectivo_en_casa": efectivo_en_casa,
             "total_venta_dia": venta_total,
-            "total_pagos": total_gastos
+            "total_pagos": total_gastos,
+            "desglose_gastos": {
+                "hoy": gasto_efectivo_hoy,
+                "ayer": gasto_efectivo_ayer,
+                "nequi": gasto_nequi
+            }
         }
     }
 
