@@ -91,18 +91,34 @@ with col_out:
         
     pagos_editados = st.data_editor(df_p_previo, num_rows="dynamic", use_container_width=True, key=f"editor_{fecha_cierre}")
 
-# --- CÁLCULOS Y RESUMEN ---
-st.divider()
-lista_pagos = pagos_editados.to_dict('records')
-res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos)
+with col_deuda:
+    st.subheader("📝 Ventas a Crédito (Fiados)")
+    # Cargar deudas previas si existen (Para actualización)
+    if registro_previo:
+        res_d = supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute()
+        df_d_previo = pd.DataFrame(res_d.data)[['cliente', 'monto']]
+        df_d_previo.columns = ['Quien Debe', 'Monto']
+    else:
+        df_d_previo = pd.DataFrame(columns=["Quien Debe", "Monto"])
+        
+    deudas_editadas = st.data_editor(df_d_previo, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
 
-# Muestra el resumen que ya teníamos...
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Ingreso Efectivo", formatear_moneda(res["ingreso_efectivo"]))
-c2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
-c3.metric("Saldo Nequi", formatear_moneda(res["nequi_total_dia"]))
-c4.metric("Efectivo Casa", formatear_moneda(res["efectivo_en_casa"]))
-c5.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
+
+# --- CÁLCULOS Y RESUMEN ---
+lista_pagos = pagos_editados.to_dict('records')
+lista_deudas = deudas_editadas.to_dict('records')
+
+res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos, lista_deudas)
+
+# --- RESUMEN ---
+st.subheader("📊 Resumen del Día")
+m1, m2, m3, m4, m5, m6 = st.columns(6)
+m1.metric("Efectivo Hoy", formatear_moneda(res["ingreso_efectivo"]))
+m2.metric("Nequi Hoy", formatear_moneda(res["ingresos_nequi"]))
+m3.metric("Fiados Hoy", formatear_moneda(res["total_fiado"]))
+m4.metric("Saldo Nequi", formatear_moneda(res["nequi_total_dia"]))
+m5.metric("Efectivo Casa", formatear_moneda(res["efectivo_en_casa"]))
+m6.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
 
 # --- BOTÓN GUARDAR / ACTUALIZAR ---
 st.divider()
@@ -130,6 +146,15 @@ if st.button(label_boton, use_container_width=True, type="primary"):
             # CREAR NUEVO
             id_existente = guardar_cierre(datos)
             exito = True if id_existente else False
+        
+        if registro_previo:
+            supabase.table("deudas").delete().eq("cierre_id", id_existente).execute()
+        
+        if lista_deudas:
+            deudas_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto']} 
+                     for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
+        if deudas_db:
+            supabase.table("deudas").insert(deudas_db).execute()
             
         # Guardar lista de pagos
         if exito and lista_pagos:

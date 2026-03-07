@@ -10,19 +10,18 @@ def calcular_monto_total(cantidades, valores):
     return total
 
 def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos):
-    # 1. Efectivo físico en caja
+
     total_billetes = calcular_monto_total(cant_billetes, BILLETES)
     total_monedas = calcular_monto_total(cant_monedas, MONEDAS)
     efectivo_en_caja = total_billetes + total_monedas
     
-    # 2. Ingreso Real Efectivo (Contado - Base)
     ingreso_efectivo = efectivo_en_caja - base_inicial
     
-    # 3. VENTA TOTAL (Nueva fórmula: Ingreso Efectivo + Ingresos Nequi)
+    total_fiado =  sum(d.get('Monto', 0) for d in lista_deudas if d.get('Monto') is not None)
+
     venta_total = ingreso_efectivo + (ingresos_nequi or 0)
     
-    # 4. Clasificación de Gastos (Igual que antes)
-    total_gastos = 0
+    total_gastos = sum(p.get('Valor', 0) for p in lista_pagos if p.get('Valor') is not None)
     g_hoy = 0
     g_ayer = 0
     g_nequi = 0
@@ -39,9 +38,10 @@ def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, n
         "base_inicial": base_inicial,
         "efectivo_contado": efectivo_en_caja,
         "ingreso_efectivo": ingreso_efectivo,
-        "ingresos_nequi": ingresos_nequi,      # Venta real Nequi
-        "nequi_total_dia": nequi_total_dia,    # Saldo referencia
+        "ingresos_nequi": ingresos_nequi,      
+        "nequi_total_dia": nequi_total_dia,    
         "efectivo_en_casa": efectivo_en_casa,
+        "total_fiado": total_fiado,
         "total_venta_dia": venta_total,
         "total_pagos": total_gastos,
         "gasto_hoy": g_hoy,

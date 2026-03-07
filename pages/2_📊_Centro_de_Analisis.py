@@ -114,6 +114,12 @@ with tab_diario:
             st.table(pagos_dia[['concepto', 'valor', 'metodo_pago']].style.format({"valor": "${:,.0f}"}))
         else:
             st.info("No se registraron pagos este día.")
+    st.subheader("📝 Detalle de Fiados (Ventas a Crédito)")
+    res_d = supabase.table("deudas").select("*").eq("cierre_id", dia['id']).execute()
+    if res_d.data:
+        st.table(pd.DataFrame(res_d.data)[['cliente', 'monto']].style.format({"monto": "${:,.0f}"}))
+    else:
+        st.info("No hubo fiados este día.")
 
 # ==========================================
 # PESTAÑA 3: CONSULTAS Y REPORTES (Gastos y Filtros)
