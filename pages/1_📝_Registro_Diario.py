@@ -109,6 +109,7 @@ with col_d: # Corregido: antes decía col_deudas
     deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
 
 # --- 6. CÁLCULOS Y RESUMEN ---
+# --- 6. CÁLCULOS Y RESUMEN ---
 st.divider()
 lista_pagos = pagos_editados.to_dict('records')
 lista_deudas = deudas_editadas.to_dict('records')
@@ -120,15 +121,35 @@ res = procesar_cierre(
     lista_pagos, lista_deudas
 )
 
-st.subheader("📊 Resumen del Día")
+# --- FILA 1: VENTAS PRINCIPALES ---
+st.subheader("📊 Resumen de Ventas")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Venta Efectivo", formatear_moneda(res["ingreso_efectivo"]))
 m2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
 m3.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]))
 m4.metric("Efectivo en Caja", formatear_moneda(res["efectivo_caja"]), help="Suma física de billetes y monedas")
 
-st.write(f"**Fiados de hoy (Informativo):** {formatear_moneda(res['total_fiado'])} **Total Gastos:** {formatear_moneda(res['total_pagos'])}")
+# --- FILA 2: GASTOS Y FIADOS (DISEÑO MEJORADO) ---
+st.subheader("📉 Detalle de Egresos y Fiados")
+g1, g2, g3, g4 = st.columns(4)
 
+with g1:
+    st.write("**Gasto Efectivo Hoy**")
+    st.write(f"### {formatear_moneda(res['gasto_hoy'])}")
+
+with g2:
+    st.write("**Gasto Efectivo Ayer**")
+    st.write(f"### {formatear_moneda(res['gasto_ayer'])}")
+
+with g3:
+    st.write("**Gasto Nequi**")
+    st.write(f"### {formatear_moneda(res['gasto_nequi'])}")
+
+with g4:
+    st.write("**Venta Fiada**")
+    st.write(f"### {formatear_moneda(res['total_fiado'])}")
+
+st.divider()
 # --- 7. BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
     if not responsable:
