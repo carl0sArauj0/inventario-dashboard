@@ -105,8 +105,8 @@ with tab_diario:
         st.markdown("### 💰 Ingresos y Ventas")
         k1, k2, k3, k4 = st.columns(4)
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Efectivo en Caja", formatear_moneda(info['efectivo_en_caja'])) # El total contado
-        k2.metric("Ingreso Efectivo", formatear_moneda(info['ingreso_efectivo'])) # El contado - base
+        k1.metric("Efectivo en Caja", formatear_moneda(info['efectivo_en_caja'])) 
+        k2.metric("Ingreso Efectivo", formatear_moneda(info['ingreso_efectivo'])) 
         k3.metric("Venta Nequi", formatear_moneda(info['ingresos_nequi']))
         k4.metric("VENTA TOTAL", formatear_moneda(info['total_venta_dia']))
 
