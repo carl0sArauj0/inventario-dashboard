@@ -138,11 +138,12 @@ if st.button(label_btn, use_container_width=True, type="primary"):
             datos = {
                 "fecha": str(fecha_cierre),
                 "base_caja": res["base_inicial"],
-                "ingreso_efectivo": res["ingreso_efectivo"],
-                "ingresos_nequi": res["ingresos_nequi"],
+                "ingreso_efectivo": res["venta_efectivo"], 
+                "efectivo_en_caja": res["efectivo_fisico"], 
+                "ingresos_nequi": res["venta_nequi"],
                 "nequi_total_dia": res["nequi_total_dia"],
                 "efectivo_en_casa": res["efectivo_en_casa"],
-                "total_venta_dia": res["total_venta_dia"],
+                "total_venta_dia": res["venta_total"],
                 "responsable": responsable
             }
             
