@@ -127,7 +127,7 @@ m2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
 m3.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]))
 m4.metric("Efectivo en Caja", formatear_moneda(res["efectivo_caja"]), help="Suma física de billetes y monedas")
 
-st.write(f"**Fiados de hoy (Informativo):** {formatear_moneda(res['total_fiado'])} | **Total Gastos:** {formatear_moneda(res['total_pagos'])}")
+st.write(f"**Fiados de hoy (Informativo):** {formatear_moneda(res['total_fiado'])} **Total Gastos:** {formatear_moneda(res['total_pagos'])}")
 
 # --- 7. BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
