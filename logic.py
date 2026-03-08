@@ -10,45 +10,34 @@ def calcular_monto_total(cantidades, valores):
     return total
 
 def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos, lista_deudas):
-    """
-    Recibe 8 parámetros desde el formulario y realiza los cálculos.
-    """
-    # 1. Efectivo físico en caja
+    # 1. EFECTIVO EN CAJA (Suma física de billetes y monedas)
     total_billetes = calcular_monto_total(cant_billetes, BILLETES)
     total_monedas = calcular_monto_total(cant_monedas, MONEDAS)
     efectivo_en_caja = total_billetes + total_monedas
     
-    # 2. Ingreso Real Efectivo (Contado - Base)
+    # 2. INGRESO EFECTIVO (Efectivo en Caja - Base Inicial)
     ingreso_efectivo = efectivo_en_caja - (base_inicial or 0)
     
-    # 3. Cálculo de Fiados (Ventas a crédito)
+    # 3. CÁLCULO DE FIADOS
     total_fiado = sum(int(d.get('Monto') or 0) for d in lista_deudas if d.get('Monto') is not None)
     
-    # 4. VENTA TOTAL (Fórmula: Ingreso Efectivo + Venta Nequi + Fiados)
+    # 4. VENTA TOTAL (Ingreso Efectivo + Ingresos Nequi + Fiados)
     venta_total = ingreso_efectivo + (ingresos_nequi or 0) + total_fiado
     
-    # 5. Clasificación de Gastos
+    # 5. Clasificación de Gastos 
     total_gastos = 0
-    g_hoy = 0
-    g_ayer = 0
-    g_nequi = 0
-    
+    g_hoy, g_ayer, g_nequi = 0, 0, 0
     for pago in lista_pagos:
         v = int(pago.get('Valor') or 0)
         m = pago.get('Metodo', 'Efectivo hoy')
-        
         total_gastos += v
-        if m == "Efectivo hoy":
-            g_hoy += v
-        elif m == "Efectivo ayer":
-            g_ayer += v
-        elif m == "Nequi":
-            g_nequi += v
+        if m == "Efectivo hoy": g_hoy += v
+        elif m == "Efectivo ayer": g_ayer += v
+        elif m == "Nequi": g_nequi += v
 
-    # Retornamos el diccionario plano para el resumen
     return {
         "base_inicial": base_inicial,
-        "efectivo_contado": efectivo_en_caja,
+        "efectivo_en_caja": efectivo_en_caja, 
         "ingreso_efectivo": ingreso_efectivo,
         "ingresos_nequi": ingresos_nequi,
         "nequi_total_dia": nequi_total_dia,
