@@ -75,27 +75,50 @@ with c_in4:
     def_casa = float(registro_previo.get('efectivo_en_casa') or 0.0) if registro_previo else 0.0
     efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, key=f"casa_{fecha_cierre}")
 
-# --- 5. TABLAS ---
+# --- 5. TABLAS DE GASTOS Y FIADOS ---
 st.divider()
-col_g, col_d = st.columns(2)
+col_g, col_d = st.columns(2) # Definimos col_g y col_d
+
 with col_g:
     st.subheader("💸 Gastos / Pagos")
-    df_p = pd.DataFrame(supabase.table("pagos").select("*").eq("cierre_id", id_existente).execute().data) if registro_previo else pd.DataFrame()
-    df_p_init = df_p[['concepto', 'valor', 'metodo_pago']].rename(columns={'concepto':'Concepto','valor':'Valor','metodo_pago':'Metodo'}) if not df_p.empty else pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
+    if registro_previo:
+        res_p_data = supabase.table("pagos").select("*").eq("cierre_id", id_existente).execute().data
+        df_p = pd.DataFrame(res_p_data)
+        if not df_p.empty:
+            df_p_init = df_p[['concepto', 'valor', 'metodo_pago']].rename(columns={'concepto':'Concepto','valor':'Valor','metodo_pago':'Metodo'})
+        else:
+            df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
+    else:
+        df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
+    
     pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}",
         column_config={"Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"])})
 
-with col_deudas: # Corrección nombre columna
+with col_d: # Corregido: antes decía col_deudas
     st.subheader("📝 Fiados (Créditos)")
-    df_d = pd.DataFrame(supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute().data) if registro_previo else pd.DataFrame()
-    df_d_init = df_d[['cliente', 'monto']].rename(columns={'cliente':'Quien Debe','monto':'Monto'}) if not df_d.empty else pd.DataFrame(columns=["Quien Debe", "Monto"])
+    if registro_previo:
+        res_d_data = supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute().data
+        df_d = pd.DataFrame(res_d_data)
+        if not df_d.empty:
+            df_d_init = df_d[['cliente', 'monto']].rename(columns={'cliente':'Quien Debe','monto':'Monto'})
+        else:
+            df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto"])
+    else:
+        df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto"])
+    
     deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
 
-# --- 6. RESUMEN ---
+# --- 6. CÁLCULOS Y RESUMEN ---
 st.divider()
 lista_pagos = pagos_editados.to_dict('records')
 lista_deudas = deudas_editadas.to_dict('records')
-res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingreso_efectivo_manual, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos, lista_deudas)
+
+res = procesar_cierre(
+    base_inicial, cant_billetes, cant_monedas, 
+    ingreso_efectivo_manual, ingresos_nequi, 
+    nequi_total_dia, efectivo_en_casa, 
+    lista_pagos, lista_deudas
+)
 
 st.subheader("📊 Resumen del Día")
 m1, m2, m3, m4 = st.columns(4)
@@ -106,30 +129,46 @@ m4.metric("Efectivo en Caja", formatear_moneda(res["efectivo_caja"]), help="Suma
 
 st.write(f"**Fiados de hoy (Informativo):** {formatear_moneda(res['total_fiado'])} | **Total Gastos:** {formatear_moneda(res['total_pagos'])}")
 
-# --- 7. GUARDAR ---
+# --- 7. BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
-    if not responsable: st.error("Ingresa responsable")
+    if not responsable:
+        st.error("Por favor ingresa el nombre del responsable.")
     else:
-        with st.spinner("Guardando..."):
-            datos = {"fecha": str(fecha_cierre), "base_caja": res["base_inicial"], "ingreso_efectivo": res["ingreso_efectivo"],
-                    "ingresos_nequi": res["ingresos_nequi"], "efectivo_en_caja": res["efectivo_caja"],
-                    "nequi_total_dia": res["nequi_total_dia"], "efectivo_en_casa": res["efectivo_en_casa"],
-                    "total_venta_dia": res["venta_total"], "responsable": responsable}
+        with st.spinner("Guardando en la base de datos..."):
+            datos = {
+                "fecha": str(fecha_cierre),
+                "base_caja": res["base_inicial"],
+                "ingreso_efectivo": res["ingreso_efectivo"],
+                "ingresos_nequi": res["ingresos_nequi"],
+                "efectivo_en_caja": res["efectivo_caja"],
+                "nequi_total_dia": res["nequi_total_dia"],
+                "efectivo_en_casa": res["efectivo_en_casa"],
+                "total_venta_dia": res["venta_total"],
+                "responsable": responsable
+            }
+            
             if registro_previo:
                 actualizar_cierre(id_existente, datos)
                 supabase.table("pagos").delete().eq("cierre_id", id_existente).execute()
                 supabase.table("deudas").delete().eq("cierre_id", id_existente).execute()
-            else: id_existente = guardar_cierre(datos)
+            else:
+                id_existente = guardar_cierre(datos)
             
-            p_db = [{"cierre_id":id_existente, "concepto":p['Concepto'], "valor":p['Valor'], "metodo_pago":p['Metodo']} for p in lista_pagos if p.get('Concepto')]
+            # Guardar Pagos
+            p_db = [{"cierre_id": id_existente, "concepto": p['Concepto'], "valor": p['Valor'], "metodo_pago": p['Metodo']} 
+                    for p in lista_pagos if p.get('Concepto') and p.get('Valor')]
             if p_db: guardar_pagos(p_db)
-            d_db = [{"cierre_id":id_existente, "cliente":d['Quien Debe'], "monto":d['Monto']} for d in lista_deudas if d.get('Quien Debe')]
+            
+            # Guardar Deudas
+            d_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto']} 
+                    for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
             if d_db: supabase.table("deudas").insert(d_db).execute()
 
         placeholder = st.empty()
         with placeholder.container():
-            if lottie_success: st_lottie(lottie_success, height=300, key="success")
-            st.success("¡Sincronizado!")
+            if lottie_success:
+                st_lottie(lottie_success, height=300, key="success")
+            st.success("¡Cierre sincronizado con éxito!")
             st.balloons()
             time.sleep(3)
         placeholder.empty()
