@@ -46,7 +46,7 @@ with c_gen1:
     responsable = st.text_input("Persona Responsable", value=def_resp)
 with c_gen2:
     def_base = float(registro_previo.get('base_caja') or 100000.0) if registro_previo else 100000.0
-    base_inicial = st.number_input("Base de Caja (Fondo)", value=def_base, step=1000.0)
+    base_inicial = st.number_input("Base Caja", value=def_base, step=1000.0)
 
 # --- 3. CONTEO DE EFECTIVO ---
 st.subheader("💰 Conteo de Billetes y Monedas")
@@ -65,17 +65,27 @@ with col_mon:
 
 # --- 4. DINERO DIGITAL Y CASA ---
 st.divider()
-st.subheader("📱 Gestión de Dinero")
-c_din1, c_din2, c_din3 = st.columns(3)
+st.subheader("📱 Gestión de Dinero e Ingresos")
+c_din1, c_din2, c_din3, c_din4 = st.columns(4)
+
+# Mostramos el Ingreso Efectivo (Calculado) aquí para que el usuario lo vea en "Gestión"
 with c_din1:
-    def_v_nequi = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
-    ingresos_nequi = st.number_input("Ingresos Nequi (Venta hoy)", value=def_v_nequi, step=1000.0, key=f"vn_{fecha_cierre}")
+    st.info("**Ingreso Efectivo**")
+    # Este valor se calcula automáticamente en la lógica, aquí solo mostramos el resultado
+    st.write(f"### {formatear_moneda(res['ingreso_efectivo'])}")
+    st.caption("(Efectivo en Caja - Base)")
+
 with c_din2:
-    def_s_nequi = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
-    nequi_total_dia = st.number_input("Saldo Nequi (App)", value=def_s_nequi, step=1000.0, key=f"sn_{fecha_cierre}")
+    def_v_nequi = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
+    ingresos_nequi = st.number_input("Ingresos Nequi (Venta hoy)", value=def_v_nequi, step=1000.0)
+
 with c_din3:
+    def_s_nequi = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
+    nequi_total_dia = st.number_input("Saldo Nequi (App)", value=def_s_nequi, step=1000.0)
+
+with c_din4:
     def_casa = float(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0.0
-    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, key=f"casa_{fecha_cierre}")
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0)
 
 # --- 5. GASTOS Y FIADOS (TABLAS) ---
 st.divider()
@@ -111,14 +121,14 @@ lista_deudas = deudas_editadas.to_dict('records')
 
 res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, lista_pagos, lista_deudas)
 
+st.divider()
 st.subheader("📊 Resumen del Día")
-m1, m2, m3, m4, m5, m6 = st.columns(6)
-m1.metric("Efectivo Hoy", formatear_moneda(res["ingreso_efectivo"]))
-m2.metric("Nequi Hoy", formatear_moneda(res["ingresos_nequi"]))
-m3.metric("Fiados Hoy", formatear_moneda(res["total_fiado"]))
-m4.metric("Saldo Nequi", formatear_moneda(res["nequi_total_dia"]))
-m5.metric("Efectivo Casa", formatear_moneda(res["efectivo_en_casa"]))
-m6.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
+m1, m2, m3, m4, m5 = st.columns(5)
+m1.metric("Efectivo en Caja", formatear_moneda(res["efectivo_en_caja"]), help="Suma de billetes y monedas")
+m2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
+m3.metric("Venta Fiados", formatear_moneda(res["total_fiado"]))
+m4.metric("Base Restada", f"- {formatear_moneda(res['base_inicial'])}")
+m5.metric("🚀 VENTA TOTAL", formatear_moneda(res["total_venta_dia"]))
 
 # --- 7. BOTÓN GUARDAR / ACTUALIZAR ---
 label_btn = "🔄 ACTUALIZAR REGISTRO" if registro_previo else "✅ GUARDAR CIERRE"
