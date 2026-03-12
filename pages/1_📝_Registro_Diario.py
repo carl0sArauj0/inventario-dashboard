@@ -152,7 +152,7 @@ with g4:
     st.write(f"### {formatear_moneda(res['total_fiado'])}")
 
 st.divider()
-# --- 7. BOTÓN GUARDAR ---
+# --- 7. BOTÓN GUARDAR (ACTUALIZADO CON TELÉFONO) ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
     if not responsable:
         st.error("Por favor ingresa el nombre del responsable.")
@@ -182,10 +182,19 @@ if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary
                     for p in lista_pagos if p.get('Concepto') and p.get('Valor')]
             if p_db: guardar_pagos(p_db)
             
-            # Guardar Deudas
-            d_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto']} 
-                    for d in lista_deudas if d.get('Quien Debe') and d.get('Monto')]
-            if d_db: supabase.table("deudas").insert(d_db).execute()
+            # Guardar Deudas (ACTUALIZADO: Ahora incluye d.get('Teléfono'))
+            d_db = [
+                {
+                    "cierre_id": id_existente, 
+                    "cliente": d['Quien Debe'], 
+                    "monto": d['Monto'],
+                    "telefono": d.get('Teléfono') # <--- Esto toma el valor de la nueva columna
+                } 
+                for d in lista_deudas 
+                if d.get('Quien Debe') and d.get('Monto')
+            ]
+            if d_db: 
+                supabase.table("deudas").insert(d_db).execute()
 
         placeholder = st.empty()
         with placeholder.container():
