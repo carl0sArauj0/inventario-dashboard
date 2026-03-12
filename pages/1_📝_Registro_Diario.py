@@ -104,9 +104,9 @@ m1, m2, m3, m4 = st.columns(4)
 m1.metric("Venta Efectivo", formatear_moneda(res["ingreso_efectivo"]), help="(Caja + Gastos Hoy) - Base")
 m2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
 m3.metric("Venta Fiados", formatear_moneda(res["total_fiado"]), help="Ventas a crédito (informativo)")
-m4.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]), delta=formatear_moneda(res["total_fiado"]), delta_color="normal")
+m4.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]))
 
-# FILA 2: AUDITORÍA Y EGRESOS (Lo que salió o hay físicamente)
+# FILA 2: AUDITORÍA Y EGRESOS
 st.write("---")
 st.subheader("📉 Auditoría de Gastos y Caja")
 e1, e2, e3, e4 = st.columns(4)
@@ -114,12 +114,14 @@ e1, e2, e3, e4 = st.columns(4)
 with e1:
     st.error("**Total Gastos**")
     st.write(f"### {formatear_moneda(res['total_pagos'])}")
-    st.caption(f"Hoy: {formatear_moneda(res['gasto_hoy'])} | Ayer: {formatear_moneda(res['gasto_ayer'])} | Nequi: {formatear_moneda(res['gasto_nequi'])}")
+    st.markdown(f"De hoy: **{formatear_moneda(res['gasto_hoy'])}**")
+    st.markdown(f"De ayer: **{formatear_moneda(res['gasto_ayer'])}**")
+    st.markdown(f"Nequi: **{formatear_moneda(res['gasto_nequi'])}**")
 
 with e2:
     st.info("**Efectivo en Caja**")
     st.write(f"### {formatear_moneda(res['efectivo_caja'])}")
-    st.caption("Dinero físico contado")
+    st.caption("Dinero físico contado hoy")
 
 with e3:
     st.info("**Efectivo en Casa**")
@@ -129,8 +131,8 @@ with e3:
 with e4:
     st.warning("**Saldo Nequi App**")
     st.write(f"### {formatear_moneda(res['nequi_total_dia'])}")
-    st.caption("Saldo total en aplicación")
-    
+    st.caption("Saldo total en la aplicación")
+
 # --- 7. GUARDAR ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
     if not responsable: st.error("Ingresa responsable")
