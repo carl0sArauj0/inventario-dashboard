@@ -4,201 +4,70 @@ import plotly.express as px
 from database import supabase
 from logic import formatear_moneda
 
-st.set_page_config(page_title="Análisis de Negocio", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Análisis", page_icon="📊", layout="wide")
 
-# --- CARGA DE DATOS CENTRALIZADA ---
 @st.cache_data(ttl=60)
-def cargar_datos_completos():
-    try:
-        # Traer cierres, pagos y deudas
-        res_c = supabase.table("cierres").select("*").order("fecha", desc=True).execute()
-        res_p = supabase.table("pagos").select("*, cierres(fecha)").execute()
-        res_d = supabase.table("deudas").select("*, cierres(fecha)").execute()
-        
-        df_c = pd.DataFrame(res_c.data)
-        df_p = pd.DataFrame(res_p.data)
-        df_d = pd.DataFrame(res_d.data)
-        
-        # Formatear fechas si hay datos
-        if not df_c.empty:
-            df_c['fecha'] = pd.to_datetime(df_c['fecha']).dt.date
-        if not df_p.empty:
-            df_p['fecha'] = df_p['cierres'].apply(lambda x: pd.to_datetime(x['fecha']).date() if x else None)
-        if not df_d.empty:
-            df_d['fecha'] = df_d['cierres'].apply(lambda x: pd.to_datetime(x['fecha']).date() if x else None)
-            
-        return df_c, df_p, df_d
-    except Exception as e:
-        st.error(f"Error al conectar con la base de datos: {e}")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+def cargar_datos():
+    res_c = supabase.table("cierres").select("*").order("fecha", desc=True).execute()
+    res_p = supabase.table("pagos").select("*, cierres(fecha)").execute()
+    res_d = supabase.table("deudas").select("*, cierres(fecha)").execute()
+    df_c = pd.DataFrame(res_c.data)
+    if not df_c.empty: df_c['fecha'] = pd.to_datetime(df_c['fecha']).dt.date
+    return df_c, pd.DataFrame(res_p.data), pd.DataFrame(res_d.data)
 
-df_c, df_p, df_d = cargar_datos_completos()
+df_c, df_p, df_d = cargar_datos()
 
 if df_c.empty:
-    st.warning("☕ Aún no hay datos registrados. Realiza tu primer cierre de caja para ver el análisis.")
+    st.info("Sin datos registrados.")
     st.stop()
 
-st.title("📊 Centro de Análisis y Consultas")
+t1, t2, t3 = st.tabs(["📈 Mensual", "📅 Detalle Diario", "🔍 Buscador"])
 
-# --- PESTAÑAS DE NAVEGACIÓN ---
-tab_mensual, tab_diario, tab_busqueda = st.tabs([
-    "📈 Análisis Mensual", 
-    "📅 Consulta por Día", 
-    "🔍 Buscador de Gastos y Fiados"
-])
+with t1:
+    df_c['mes'] = pd.to_datetime(df_c['fecha']).dt.strftime('%Y-%m')
+    mes_sel = st.selectbox("Mes:", df_c['mes'].unique())
+    df_m = df_c[df_c['mes'] == mes_sel]
+    ids = df_m['id'].tolist()
+    gastos_m = df_p[df_p['cierre_id'].isin(ids)]['valor'].sum()
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Venta Bruta Total", formatear_moneda(df_m['total_venta_dia'].sum()))
+    c2.metric("Gastos Totales", formatear_moneda(gastos_m), delta_color="inverse")
+    c3.metric("Utilidad Estimada", formatear_moneda(df_m['total_venta_dia'].sum() - gastos_m))
+    
+    st.plotly_chart(px.bar(df_m.sort_values('fecha'), x='fecha', y='total_venta_dia', title="Ventas por Día"), use_container_width=True)
 
-# ==========================================
-# PESTAÑA 1: ANÁLISIS MENSUAL
-# ==========================================
-with tab_mensual:
-    st.header("Resumen del Mes")
-    
-    # Filtro de Mes/Año
-    df_c['mes_año'] = pd.to_datetime(df_c['fecha']).dt.strftime('%Y-%m')
-    meses_disp = df_c['mes_año'].unique()
-    mes_sel = st.selectbox("Selecciona el mes a analizar:", meses_disp)
-    
-    df_m = df_c[df_c['mes_año'] == mes_sel]
-    ids_mes = df_m['id'].tolist()
-    
-    # Filtrar pagos y deudas del mes seleccionado
-    df_p_m = df_p[df_p['cierre_id'].isin(ids_mes)]
-    df_d_m = df_d[df_d['cierre_id'].isin(ids_mes)]
-    
-    # Métricas Principales (Basadas en tu lógica manual)
-    m1, m2, m3, m4 = st.columns(4)
-    v_total = df_m['total_venta_dia'].sum()
-    g_total = df_p_m['valor'].sum() if not df_p_m.empty else 0
-    f_total = df_d_m['monto'].sum() if not df_d_m.empty else 0
-    
-    m1.metric("Ventas Totales (Efectivo+Nequi)", formatear_moneda(v_total))
-    m2.metric("Gastos Totales", formatear_moneda(g_total), delta_color="inverse")
-    m3.metric("Utilidad Estimada", formatear_moneda(v_total - g_total))
-    m4.metric("Total en Fiados (Mes)", formatear_moneda(f_total))
-
-    st.divider()
-    
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        st.subheader("Tendencia de Venta Diaria")
-        fig_linea = px.line(df_m.sort_values('fecha'), x='fecha', y='total_venta_dia', 
-                           markers=True, title="Ventas Reales (Efectivo + Nequi)", labels={'total_venta_dia': 'Venta ($)'})
-        st.plotly_chart(fig_linea, use_container_width=True)
+with t2:
+    f_bus = st.date_input("Día:", df_c['fecha'].max())
+    dia = df_c[df_c['fecha'] == f_bus]
+    if not dia.empty:
+        info = dia.iloc[0]
+        st.subheader(f"Auditoría del {f_bus}")
         
-    with col_g2:
-        st.subheader("Composición de Ingresos y Créditos")
-        comp_data = pd.DataFrame({
-            "Origen": ["Venta Efectivo", "Venta Nequi", "Fiados (Por cobrar)"],
-            "Monto": [df_m['ingreso_efectivo'].sum(), df_m['ingresos_nequi'].sum(), f_total]
-        })
-        fig_pie = px.pie(comp_data, values='Monto', names='Origen', hole=0.4, 
-                         color_discrete_sequence=px.colors.qualitative.Pastel)
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-# ==========================================
-# PESTAÑA 2: CONSULTA POR DÍA (Auditoría)
-# ==========================================
-with tab_diario:
-    st.header("Detalle Específico de un Día")
-    fecha_busqueda = st.date_input("Selecciona una fecha para auditar:", df_c['fecha'].max())
-    
-    dia_data = df_c[df_c['fecha'] == fecha_busqueda]
-    
-    if dia_data.empty:
-        st.error("No se encontró ningún cierre de caja para esta fecha.")
-    else:
-        info = dia_data.iloc[0]
-        st.success(f"Cierre registrado por: **{info.get('responsable', 'Desconocido')}**")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🚀 VENTA TOTAL", formatear_moneda(info['total_venta_dia']))
+        c2.metric("Venta Efectivo", formatear_moneda(info['ingreso_efectivo']))
+        c3.metric("Venta Nequi", formatear_moneda(info['ingresos_nequi']))
         
-        # Fila 1: Resumen de Ventas
-        st.markdown("### 💰 Ventas Reales (Ingreso Declarado)")
-        k1, k2, k3 = st.columns(3)
-        k1.metric("Venta Efectivo", formatear_moneda(info.get('ingreso_efectivo', 0)))
-        k2.metric("Venta Nequi", formatear_moneda(info.get('ingresos_nequi', 0)))
-        k3.metric("🚀 VENTA TOTAL", formatear_moneda(info.get('total_venta_dia', 0)))
-
-        # Fila 2: Auditoría física y fiados
-        st.markdown("### 🔍 Auditoría de Caja y Otros")
-        s1, s2, s3, s4 = st.columns(4)
-        s1.metric("Efectivo Contado (Físico)", formatear_moneda(info.get('efectivo_en_caja', 0)))
-        s2.metric("Base Caja (Fondo)", formatear_moneda(info.get('base_caja', 0)))
-        s3.metric("Saldo Nequi (App)", formatear_moneda(info.get('nequi_total_dia', 0)))
-        s4.metric("Efectivo en Casa", formatear_moneda(info.get('efectivo_en_casa', 0)))
-
         st.divider()
+        st.write("**Desglose de Caja:**")
+        a1, a2, a3 = st.columns(3)
+        a1.write(f"Efectivo en Caja: {formatear_moneda(info['efectivo_en_caja'])}")
+        a2.write(f"Base Caja: - {formatear_moneda(info['base_caja'])}")
+        a3.write(f"Efectivo en Casa: {formatear_moneda(info['efectivo_en_casa'])}")
         
-        # Tablas de detalle: Gastos y Fiados
-        col_t1, col_t2 = st.columns(2)
-        with col_t1:
-            st.subheader("💸 Gastos Registrados")
-            pagos_dia = df_p[df_p['cierre_id'] == info['id']]
-            if not pagos_dia.empty:
-                st.dataframe(
-                    pagos_dia[['concepto', 'valor', 'metodo_pago']], 
-                    column_config={
-                        "concepto": "Concepto",
-                        "valor": st.column_config.NumberColumn("Monto", format="$ %d"),
-                        "metodo_pago": "Método"
-                    },
-                    hide_index=True, 
-                    use_container_width=True
-                )
-            else:
-                st.info("No se registraron gastos este día.")
-                
-        with col_t2:
-            st.subheader("📝 Fiados (Ventas a Crédito)")
-            deudas_dia = df_d[df_d['cierre_id'] == info['id']]
-            if not deudas_dia.empty:
-                st.dataframe(
-                    deudas_dia[['cliente', 'monto', 'telefono']], 
-                    column_config={
-                        "cliente": "Cliente",
-                        "monto": st.column_config.NumberColumn("Monto", format="$ %d"),
-                        "telefono": "Teléfono"
-                    },
-                    hide_index=True, 
-                    use_container_width=True
-                )
-            else:
-                st.info("No hubo ventas fiadas este día.")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Gastos:**")
+            st.dataframe(df_p[df_p['cierre_id']==info['id']][['concepto','valor','metodo_pago']], hide_index=True)
+        with col2:
+            st.write("**Fiados:**")
+            st.dataframe(df_d[df_d['cierre_id']==info['id']][['cliente','monto','telefono']], hide_index=True)
 
-# ==========================================
-# PESTAÑA 3: BUSCADOR GLOBAL
-# ==========================================
-with tab_busqueda:
-    st.header("Buscador de Proveedores y Deudores")
-    
-    opcion_busqueda = st.radio("¿Qué deseas rastrear?", ["Gastos (Proveedores)", "Fiados (Deudas de Clientes)"])
-    
-    if opcion_busqueda == "Gastos (Proveedores)":
-        term = st.text_input("Nombre del proveedor o concepto (ej: Gaseosas, Makro):")
-        if term:
-            res_busq = df_p[df_p['concepto'].str.contains(term, case=False, na=False)]
-            st.write(f"Se encontraron **{len(res_busq)}** registros.")
-            st.dataframe(
-                res_busq[['fecha', 'concepto', 'valor', 'metodo_pago']], 
-                column_config={"valor": st.column_config.NumberColumn("Monto", format="$ %d")},
-                hide_index=True, 
-                use_container_width=True
-            )
-            st.metric(f"Total pagado a '{term}'", formatear_moneda(res_busq['valor'].sum()))
-    
-    else:
-        term = st.text_input("Nombre del cliente para ver sus deudas:")
-        if term:
-            res_busq = df_d[df_d['cliente'].str.contains(term, case=False, na=False)]
-            st.write(f"Se encontraron **{len(res_busq)}** deudas registradas.")
-            st.dataframe(
-                res_busq[['fecha', 'cliente', 'monto', 'telefono']], 
-                column_config={"monto": st.column_config.NumberColumn("Monto", format="$ %d")},
-                hide_index=True, 
-                use_container_width=True
-            )
-            st.metric(f"Total acumulado de '{term}'", formatear_moneda(res_busq['monto'].sum()))
-
-    st.divider()
-    with st.expander("📥 Exportar Datos Crutos"):
-        st.write("Descarga toda la base de datos de cierres para Excel.")
-        csv_data = df_c.to_csv(index=False).encode('utf-8')
-        st.download_button("Descargar CSV", csv_data, "cierres_cafeteria.csv", "text/csv")
+with t3:
+    term = st.text_input("Buscar Concepto o Cliente:")
+    if term:
+        r1 = df_p[df_p['concepto'].str.contains(term, case=False, na=False)]
+        r2 = df_d[df_d['cliente'].str.contains(term, case=False, na=False)]
+        if not r1.empty: st.write("Gastos:", r1)
+        if not r2.empty: st.write("Fiados:", r2)
