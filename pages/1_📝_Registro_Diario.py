@@ -94,21 +94,23 @@ with col_g:
     pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}",
         column_config={"Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"])})
 
-with col_d: # Corregido: antes decía col_deudas
+with col_d:
     st.subheader("📝 Fiados (Créditos)")
     if registro_previo:
         res_d_data = supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute().data
         df_d = pd.DataFrame(res_d_data)
         if not df_d.empty:
-            df_d_init = df_d[['cliente', 'monto']].rename(columns={'cliente':'Quien Debe','monto':'Monto'})
+            # Agregamos 'telefono' al filtrado y renombramos
+            df_d_init = df_d[['cliente', 'monto', 'telefono']].rename(
+                columns={'cliente':'Quien Debe','monto':'Monto', 'telefono':'Teléfono'}
+            )
         else:
-            df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto"])
+            df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     else:
-        df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto"])
+        df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     
     deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
 
-# --- 6. CÁLCULOS Y RESUMEN ---
 # --- 6. CÁLCULOS Y RESUMEN ---
 st.divider()
 lista_pagos = pagos_editados.to_dict('records')
