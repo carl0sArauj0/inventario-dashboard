@@ -146,7 +146,7 @@ with g3:
     st.write(f"### {formatear_moneda(res['gasto_nequi'])}")
 
 with g4:
-    st.write("**Venta Fiada**")
+    st.write("**Venta a Crédito**")
     st.write(f"### {formatear_moneda(res['total_fiado'])}")
 
 st.divider()
