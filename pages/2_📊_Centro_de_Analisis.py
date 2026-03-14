@@ -22,14 +22,14 @@ def cargar_datos_maestros():
         res_c = supabase.table("cierres").select("*").order("fecha", desc=False).execute()
         df_c = pd.DataFrame(res_c.data)
         
-        # Cargamos pagos y deudas con relación a cierres para obtener la fecha
+        # Cargamos pagos y deudas
         res_p = supabase.table("pagos").select("*, cierres(fecha)").execute()
         res_d = supabase.table("deudas").select("*, cierres(fecha)").execute()
         
         df_p = pd.DataFrame(res_p.data)
         df_d = pd.DataFrame(res_d.data)
 
-        # PROCESAMIENTO DE FECHAS (Aquí corregimos el KeyError)
+        # Procesamiento de Fechas
         if not df_c.empty:
             df_c['fecha'] = pd.to_datetime(df_c['fecha'])
             df_c['dia_semana'] = df_c['fecha'].dt.day_name()
@@ -60,10 +60,11 @@ if df_c.empty:
 st.sidebar.title("🛠️ Inteligencia de Negocio")
 fecha_inicio = df_c['fecha'].min().date()
 fecha_fin = df_c['fecha'].max().date()
-rango = st.sidebar.date_input("Periodo", [fecha_inicio, fecha_fin])
 
-# Filtrar datos por rango
-if len(rango) == 2:
+# Manejo de rango de fechas
+rango = st.sidebar.date_input("Periodo de Análisis", [fecha_inicio, fecha_fin])
+
+if isinstance(rango, list) and len(rango) == 2:
     mask = (df_c['fecha'].dt.date >= rango[0]) & (df_c['fecha'].dt.date <= rango[1])
     df_c_f = df_c[mask]
     ids_periodo = df_c_f['id'].tolist()
@@ -77,7 +78,7 @@ st.title("📊 Dashboard Estadístico de Cafetería")
 tab1, tab2, tab3 = st.tabs(["🚀 KPIs de Rendimiento", "🕒 Comportamiento Temporal", "🔍 Auditoría Detallada"])
 
 # ==========================================
-# TAB 1: KPIs (Vista de Dueño)
+# TAB 1: KPIs
 # ==========================================
 with tab1:
     v_total = df_c_f['total_venta_dia'].sum()
@@ -92,43 +93,42 @@ with tab1:
 
     st.divider()
     
-    # Gráfico de Área (Ventas vs Gastos)
+    # Gráfico de Área
     df_resumen = df_c_f.groupby('fecha')['total_venta_dia'].sum().reset_index()
     fig_area = px.area(df_resumen, x='fecha', y='total_venta_dia', 
-                       title="Flujo de Ventas Diarias", color_discrete_sequence=['#00CC96'])
+                       title="Flujo de Ventas Diarias", color_discrete_sequence=['#00CC96'], template="plotly_white")
     st.plotly_chart(fig_area, use_container_width=True)
 
 # ==========================================
 # TAB 2: COMPORTAMIENTO TEMPORAL
 # ==========================================
-with tab_perfil := tab2:
+with tab2:
     st.subheader("¿Cuándo se vende más?")
-    
     col_a, col_b = st.columns(2)
     
     with col_a:
-        # Venta promedio por día de la semana (Español)
+        # Fortaleza por día
         orden_dias = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         df_dias = df_c_f.groupby('dia_semana')['total_venta_dia'].mean().reindex(orden_dias).reset_index()
-        df_dias['dia_semana'] = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
+        df_dias['dia_label'] = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
         
         fig_radar = go.Figure(data=go.Scatterpolar(
             r=df_dias['total_venta_dia'],
-            theta=df_dias['dia_semana'],
+            theta=df_dias['dia_label'],
             fill='toself', line_color='#636EFA'
         ))
-        fig_radar.update_layout(title="Fortaleza Comercial por Día", polar=dict(radialaxis=dict(visible=True)))
+        fig_radar.update_layout(title="Fortaleza Comercial por Día (Promedio)", polar=dict(radialaxis=dict(visible=True)), template="plotly_white")
         st.plotly_chart(fig_radar, use_container_width=True)
 
     with col_b:
         # Mix de cobro
         mix = df_c_f[['ingreso_efectivo', 'ingresos_nequi']].sum()
         fig_pie = px.pie(values=mix.values, names=['Efectivo', 'Nequi'], 
-                         title="Preferencias de Pago Clientes", hole=.4)
+                         title="Preferencias de Pago Clientes", hole=.4, template="plotly_white")
         st.plotly_chart(fig_pie, use_container_width=True)
 
 # ==========================================
-# TAB 3: AUDITORÍA Y FIADOS
+# TAB 3: AUDITORÍA DETALLADA
 # ==========================================
 with tab3:
     col_t1, col_t2 = st.columns(2)
@@ -136,7 +136,6 @@ with tab3:
     with col_t1:
         st.subheader("📝 Control de Fiados (Por Cobrar)")
         if not df_d_f.empty:
-            # Seleccionamos columnas de forma segura
             display_deudas = df_d_f[['fecha', 'cliente', 'monto', 'telefono']].copy()
             display_deudas['fecha'] = display_deudas['fecha'].dt.date
             st.dataframe(display_deudas, hide_index=True, use_container_width=True)
@@ -147,8 +146,8 @@ with tab3:
     with col_t2:
         st.subheader("💸 Top Gastos")
         if not df_p_f.empty:
-            top_gastos = df_p_f.groupby('concepto')['valor'].sum().sort_values(ascending=False).head(10)
-            fig_bar = px.bar(top_gastos, title="Principales Fugas de Dinero", color_discrete_sequence=['#EF553B'])
+            top_gastos = df_p_f.groupby('concepto')['valor'].sum().sort_values(ascending=True).tail(10)
+            fig_bar = px.bar(top_gastos, title="Principales Fugas de Dinero (Top 10)", orientation='h', color_discrete_sequence=['#EF553B'], template="plotly_white")
             st.plotly_chart(fig_bar, use_container_width=True)
         else:
             st.info("No hay gastos registrados.")
