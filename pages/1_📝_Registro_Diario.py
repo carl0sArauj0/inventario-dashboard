@@ -27,7 +27,13 @@ with col_f:
 registro_previo = obtener_cierre_por_fecha(fecha_cierre)
 id_existente = registro_previo['id'] if registro_previo else None
 # Extraer el desglose de billetes guardado anteriormente
-desglose_previo = registro_previo.get('desglose_efectivo', {}) if registro_previo else {}
+registro_previo = obtener_cierre_por_fecha(fecha_cierre)
+id_existente = registro_previo['id'] if registro_previo else None
+
+if registro_previo:
+    desglose_previo = registro_previo.get('desglose_efectivo') or {}
+else:
+    desglose_previo = {}
 
 # --- 2. DATOS GENERALES ---
 st.divider()
