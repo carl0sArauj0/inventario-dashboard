@@ -84,7 +84,7 @@ with tabs[0]:
     c4.metric("Días Registrados", len(df_c_f))
 
     st.divider()
-    # Gráfica de Área Moderna
+
     fig_area = px.area(df_c_f.sort_values('fecha_dt'), 
                    x='fecha_dt', 
                    y='total_venta_dia', 
@@ -93,13 +93,21 @@ with tabs[0]:
                    color_discrete_sequence=['#00CC96'], 
                    template="plotly_white")
 
-    # Ajuste de posición de etiquetas, formato de moneda y limpieza del eje X
-    fig_area.update_traces(texttemplate='$%{text:,.0f}', textposition='top center')
+    # Ajuste de formato: Símbolo $, separador de miles y posición arriba
+    fig_area.update_traces(
+        texttemplate='$%{text:,.0f}', 
+        textposition='top center',
+        mode='lines+markers+text' 
+    )
 
+    # Ajuste del diseño del eje y márgenes
     fig_area.update_layout(
-    yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.2]), # Espacio extra arriba para que el texto no se corte
-    xaxis=dict(tickformat="%d %b") # Muestra día y mes abreviado para reducir espacio
-)
+        yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.3]), 
+        xaxis=dict(tickformat="%d %b", nticks=10), 
+        margin=dict(t=50, b=50)
+    )
+
+    st.plotly_chart(fig_area, use_container_width=True)
 
 # ==========================================
 # TAB 2: COMPORTAMIENTO TEMPORAL
