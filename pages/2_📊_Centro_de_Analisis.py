@@ -85,9 +85,21 @@ with tabs[0]:
 
     st.divider()
     # Gráfica de Área Moderna
-    fig_area = px.area(df_c_f.sort_values('fecha_dt'), x='fecha_dt', y='total_venta_dia', 
-                       title="Flujo de Caja: Venta Diaria", color_discrete_sequence=['#00CC96'], template="plotly_white")
-    st.plotly_chart(fig_area, use_container_width=True)
+    fig_area = px.area(df_c_f.sort_values('fecha_dt'), 
+                   x='fecha_dt', 
+                   y='total_venta_dia', 
+                   text='total_venta_dia', 
+                   title="Flujo de Caja: Venta Diaria", 
+                   color_discrete_sequence=['#00CC96'], 
+                   template="plotly_white")
+
+    # Ajuste de posición de etiquetas, formato de moneda y limpieza del eje X
+    fig_area.update_traces(texttemplate='$%{text:,.0f}', textposition='top center')
+
+fig_area.update_layout(
+    yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.2]), # Espacio extra arriba para que el texto no se corte
+    xaxis=dict(tickformat="%d %b") # Muestra día y mes abreviado para reducir espacio
+)
 
 # ==========================================
 # TAB 2: COMPORTAMIENTO TEMPORAL
