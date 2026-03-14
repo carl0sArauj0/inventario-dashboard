@@ -129,7 +129,7 @@ with tabs[2]:
         k1, k2, k3, k4, k5 = st.columns(5)
         k1.metric("Venta Total", formatear_moneda(info['total_venta_dia']))
         k2.metric("Efectivo Contado", formatear_moneda(info.get('efectivo_en_caja', 0)))
-        k3.metric("Ingreso Nequi", formatear_moneda(info.get('ingreso_nequi', 0)))
+        k3.metric("Ingreso Nequi", formatear_moneda(info.get('ingresos_nequi', 0)))
         k4.metric("Saldo Nequi App", formatear_moneda(info.get('nequi_total_dia', 0)))
         k5.metric("Efectivo Casa", formatear_moneda(info.get('efectivo_en_casa', 0)))
 
