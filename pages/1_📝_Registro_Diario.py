@@ -150,7 +150,7 @@ if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary
                 "total_venta_dia": res["venta_total"], 
                 "responsable": responsable,
                 "desglose_efectivo": dict_desglose 
-            
+            }
             if registro_previo:
                 actualizar_cierre(id_existente, datos)
                 supabase.table("pagos").delete().eq("cierre_id", id_existente).execute()
