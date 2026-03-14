@@ -85,7 +85,7 @@ with tabs[0]:
 
     st.divider()
 
-    # Gráfica de Área Interactiva
+    # Gráfica de Área
     fig_area = px.area(df_c_f.sort_values('fecha_dt'), 
                    x='fecha_dt', 
                    y='total_venta_dia', 
@@ -94,24 +94,21 @@ with tabs[0]:
                    color_discrete_sequence=['#00CC96'], 
                    template="plotly_white")
 
-    # Configuración de los puntos, líneas y etiquetas de texto
+    # Ajuste de formato: .3s convierte a formato SI (k para miles, M para millones) con 3 dígitos significativos
     fig_area.update_traces(
-        texttemplate='$%{text:,.0f}', 
+        texttemplate='%{text:.3s}', 
         textposition='top center',
-        mode='lines+markers+text',
-        marker=dict(size=8) # Puntos más visibles para facilitar el clic/zoom
+        mode='lines+markers+text'
     )
 
+    # Ajuste del eje X para que no esté saturado y el eje Y tenga espacio
     fig_area.update_layout(
-        yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.4]), # Espacio para el texto
+        yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.2]), 
         xaxis=dict(
-            tickformat="%d %b", # Formato: 23 Feb
-            nticks=10,          
-            rangeslider=dict(visible=True), 
-            type='date'
+            tickformat="%d %b", 
+            nticks=10  # Mantiene el eje X limpio con máximo 10 fechas
         ),
-        dragmode='pan', 
-        height=600      
+        margin=dict(t=50, b=50)
     )
 
     # Mostrar la gráfica
