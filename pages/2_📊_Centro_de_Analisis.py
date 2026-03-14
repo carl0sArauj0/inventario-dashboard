@@ -96,7 +96,7 @@ with tabs[0]:
     # Ajuste de posición de etiquetas, formato de moneda y limpieza del eje X
     fig_area.update_traces(texttemplate='$%{text:,.0f}', textposition='top center')
 
-fig_area.update_layout(
+    fig_area.update_layout(
     yaxis=dict(range=[0, df_c_f['total_venta_dia'].max() * 1.2]), # Espacio extra arriba para que el texto no se corte
     xaxis=dict(tickformat="%d %b") # Muestra día y mes abreviado para reducir espacio
 )
