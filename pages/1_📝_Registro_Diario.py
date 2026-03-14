@@ -17,146 +17,125 @@ def load_lottieurl(url: str):
 
 lottie_success = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_s2lryxtd.json")
 
-st.title("📝 Registro de Cierre Automatizado")
+st.title("📝 Registro de Cierre con Memoria")
 
-# --- 1. FECHA ---
-col_f, col_i = st.columns([1, 2])
-with col_f:
-    fecha_cierre = st.date_input("Fecha de Trabajo", date.today())
+# --- 1. SELECCIÓN DE FECHA ---
+col_fecha, col_info = st.columns([1, 2])
+with col_fecha:
+    fecha_cierre = st.date_input("Fecha", date.today())
 
 registro_previo = obtener_cierre_por_fecha(fecha_cierre)
 id_existente = registro_previo['id'] if registro_previo else None
+# Extraer el desglose guardado si existe
+desglose_previo = registro_previo.get('desglose_efectivo', {}) if registro_previo else {}
+
+if registro_previo:
+    st.warning(f"⚠️ Datos del {fecha_cierre} cargados. Puedes editarlos.")
 
 # --- 2. DATOS GENERALES ---
 st.divider()
 c1, c2 = st.columns(2)
 with c1:
-    def_resp = registro_previo.get('responsable', "") if registro_previo else ""
-    responsable = st.text_input("Persona Responsable", value=def_resp)
+    responsable = st.text_input("Persona Responsable", value=registro_previo.get('responsable', "") if registro_previo else "")
 with c2:
     def_base = float(registro_previo.get('base_caja') or 100000.0) if registro_previo else 100000.0
     base_inicial = st.number_input("Base Caja (Fondo)", value=def_base, step=1000.0)
 
-# --- 3. CONTEO FÍSICO ---
-st.subheader("💰 1. Conteo de Dinero en Caja")
+# --- 3. CONTEO DE EFECTIVO (Billetes y Monedas con Memoria) ---
+st.subheader("💰 1. Conteo de Billetes y Monedas")
 col_bill, col_mon = st.columns(2)
+
 cant_billetes = []
 with col_bill:
     for b in BILLETES:
-        cant_billetes.append(st.number_input(f"Billetes de {formatear_moneda(b)}", min_value=0, key=f"b_{b}_{fecha_cierre}"))
+        # Buscamos en el JSON si ya había una cantidad para este billete
+        val_default = int(desglose_previo.get(f"b_{b}", 0))
+        cant = st.number_input(f"Billetes de {formatear_moneda(b)}", min_value=0, value=val_default, key=f"b_{b}_{fecha_cierre}")
+        cant_billetes.append(cant)
+
 cant_monedas = []
 with col_mon:
     for m in MONEDAS:
-        cant_monedas.append(st.number_input(f"Monedas de {formatear_moneda(m)}", min_value=0, key=f"m_{m}_{fecha_cierre}"))
+        val_default = int(desglose_previo.get(f"m_{m}", 0))
+        cant = st.number_input(f"Monedas de {formatear_moneda(m)}", min_value=0, value=val_default, key=f"m_{m}_{fecha_cierre}")
+        cant_monedas.append(cant)
 
-# --- 4. TABLAS DE GASTOS Y FIADOS ---
+# --- 4. GASTOS Y FIADOS ---
 st.divider()
-st.subheader("💸 2. Gastos y Fiados")
 col_g, col_d = st.columns(2)
-
 with col_g:
     st.write("**Gastos / Pagos**")
     if registro_previo:
-        df_p = pd.DataFrame(supabase.table("pagos").select("*").eq("cierre_id", id_existente).execute().data)
-        df_p_init = df_p[['concepto', 'valor', 'metodo_pago']].rename(columns={'concepto':'Concepto','valor':'Valor','metodo_pago':'Metodo'}) if not df_p.empty else pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
+        res_p = supabase.table("pagos").select("*").eq("cierre_id", id_existente).execute()
+        df_p_init = pd.DataFrame(res_p.data)[['concepto', 'valor', 'metodo_pago']].rename(columns={'concepto':'Concepto','valor':'Valor','metodo_pago':'Metodo'}) if res_p.data else pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
     else:
         df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
-    
-    pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}",
-        column_config={"Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"])})
+    pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}", column_config={"Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"])})
 
 with col_d:
-    st.write("**Ventas Fiadas (Créditos)**")
+    st.write("**Ventas Fiadas**")
     if registro_previo:
-        df_d = pd.DataFrame(supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute().data)
-        df_d_init = df_d[['cliente', 'monto', 'telefono']].rename(columns={'cliente':'Quien Debe','monto':'Monto', 'telefono':'Teléfono'}) if not df_d.empty else pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
+        res_d = supabase.table("deudas").select("*").eq("cierre_id", id_existente).execute()
+        df_d_init = pd.DataFrame(res_d.data)[['cliente', 'monto', 'telefono']].rename(columns={'cliente':'Quien Debe','monto':'Monto','telefono':'Teléfono'}) if res_d.data else pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     else:
         df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
-    
     deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
 
-# --- 5. INGRESOS DIGITALES Y SALDOS ---
+# --- 5. INGRESOS DIGITALES ---
 st.divider()
-st.subheader("📱 3. Nequi y Otros")
 c_in1, c_in2, c_in3 = st.columns(3)
 with c_in1:
-    def_vn = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
-    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=def_vn, step=1000.0)
+    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=float(registro_previo.get('ingresos_nequi', 0.0) if registro_previo else 0.0), step=1000.0)
 with c_in2:
-    def_sn = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
-    nequi_total_dia = st.number_input("Saldo App Nequi", value=def_sn, step=1000.0)
+    nequi_total_dia = st.number_input("Saldo App Nequi", value=float(registro_previo.get('nequi_total_dia', 0.0) if registro_previo else 0.0), step=1000.0)
 with c_in3:
-    def_casa = float(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0.0
-    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0)
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=float(registro_previo.get('efectivo_en_casa', 0.0) if registro_previo else 0.0), step=1000.0)
 
-# --- 6. CÁLCULOS AUTOMÁTICOS ---
-st.divider()
-res = procesar_cierre(
-    base_inicial, cant_billetes, cant_monedas, 
-    ingresos_nequi, nequi_total_dia, efectivo_en_casa, 
-    pagos_editados.to_dict('records'), deudas_editadas.to_dict('records')
-)
+# --- 6. CÁLCULOS ---
+res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, pagos_editados.to_dict('records'), deudas_editadas.to_dict('records'))
 
-st.subheader("📊 Resumen de Resultados")
-
-# FILA 1: VENTAS (Lo que entró o se vendió)
+st.subheader("📊 Resumen")
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Venta Efectivo", formatear_moneda(res["ingreso_efectivo"]), help="(Caja + Gastos Hoy) - Base")
+m1.metric("Venta Efectivo", formatear_moneda(res["ingreso_efectivo"]))
 m2.metric("Venta Nequi", formatear_moneda(res["ingresos_nequi"]))
-m3.metric("Venta Fiados", formatear_moneda(res["total_fiado"]), help="Ventas a crédito (informativo)")
-m4.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]))
+m3.metric("🚀 VENTA TOTAL", formatear_moneda(res["venta_total"]))
+m4.metric("Efectivo en Caja", formatear_moneda(res["efectivo_caja"]))
 
-# FILA 2: AUDITORÍA Y EGRESOS
-st.write("---")
-st.subheader("📉 Auditoría de Gastos y Caja")
-e1, e2, e3, e4 = st.columns(4)
-
-with e1:
-    st.error("**Total Gastos**")
-    st.write(f"### {formatear_moneda(res['total_pagos'])}")
-    st.markdown(f"De hoy: **{formatear_moneda(res['gasto_hoy'])}**")
-    st.markdown(f"De ayer: **{formatear_moneda(res['gasto_ayer'])}**")
-    st.markdown(f"Nequi: **{formatear_moneda(res['gasto_nequi'])}**")
-
-with e2:
-    st.info("**Efectivo en Caja**")
-    st.write(f"### {formatear_moneda(res['efectivo_caja'])}")
-    st.caption("Dinero físico contado hoy")
-
-with e3:
-    st.info("**Efectivo en Casa**")
-    st.write(f"### {formatear_moneda(res['efectivo_en_casa'])}")
-    st.caption("Dinero guardado fuera")
-
-with e4:
-    st.warning("**Saldo Nequi App**")
-    st.write(f"### {formatear_moneda(res['nequi_total_dia'])}")
-    st.caption("Saldo total en la aplicación")
-
-# --- 7. GUARDAR ---
+# --- 7. BOTÓN GUARDAR ---
 if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary"):
     if not responsable: st.error("Ingresa responsable")
     else:
+        # CREAR EL JSON DEL DESGLOSE
+        dict_desglose = {}
+        for b, cant in zip(BILLETES, cant_billetes): dict_desglose[f"b_{b}"] = cant
+        for m, cant in zip(MONEDAS, cant_monedas): dict_desglose[f"m_{m}"] = cant
+
+        datos = {
+            "fecha": str(fecha_cierre), 
+            "base_caja": res["base_inicial"], 
+            "ingreso_efectivo": res["ingreso_efectivo"],
+            "ingresos_nequi": res["ingresos_nequi"], 
+            "efectivo_en_caja": res["efectivo_caja"],
+            "nequi_total_dia": res["nequi_total_dia"], 
+            "efectivo_en_casa": res["efectivo_en_casa"],
+            "total_venta_dia": res["venta_total"], 
+            "responsable": responsable,
+            "desglose_efectivo": dict_desglose 
+        }
+        
         with st.spinner("Guardando..."):
-            datos = {"fecha": str(fecha_cierre), "base_caja": res["base_inicial"], "ingreso_efectivo": res["ingreso_efectivo"],
-                    "ingresos_nequi": res["ingresos_nequi"], "efectivo_en_caja": res["efectivo_caja"],
-                    "nequi_total_dia": res["nequi_total_dia"], "efectivo_en_casa": res["efectivo_en_casa"],
-                    "total_venta_dia": res["venta_total"], "responsable": responsable}
             if registro_previo:
                 actualizar_cierre(id_existente, datos)
                 supabase.table("pagos").delete().eq("cierre_id", id_existente).execute()
                 supabase.table("deudas").delete().eq("cierre_id", id_existente).execute()
             else: id_existente = guardar_cierre(datos)
             
-            p_db = [{"cierre_id": id_existente, "concepto": p['Concepto'], "valor": p['Valor'], "metodo_pago": p['Metodo']} for p in pagos_editados.to_dict('records') if p.get('Concepto')]
+            p_db = [{"cierre_id":id_existente,"concepto":p['Concepto'],"valor":p['Valor'],"metodo_pago":p['Metodo']} for p in pagos_editados.to_dict('records') if p.get('Concepto')]
             if p_db: guardar_pagos(p_db)
-            d_db = [{"cierre_id": id_existente, "cliente": d['Quien Debe'], "monto": d['Monto'], "telefono": d.get('Teléfono')} for d in deudas_editadas.to_dict('records') if d.get('Quien Debe')]
+            d_db = [{"cierre_id":id_existente,"cliente":d['Quien Debe'],"monto":d['Monto'],"telefono":d.get('Teléfono')} for d in deudas_editadas.to_dict('records') if d.get('Quien Debe')]
             if d_db: supabase.table("deudas").insert(d_db).execute()
 
-        placeholder = st.empty()
-        with placeholder.container():
-            if lottie_success: st_lottie(lottie_success, height=200, key="success")
-            st.success("¡Sincronizado!")
-            st.balloons()
-            time.sleep(2)
+        st.success("¡Datos sincronizados!")
+        st.balloons()
+        time.sleep(2)
         st.rerun()
