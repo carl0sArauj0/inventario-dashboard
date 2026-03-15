@@ -39,8 +39,8 @@ with c1:
     def_resp = registro_previo.get('responsable', "") if registro_previo else ""
     responsable = st.text_input("Persona Responsable", value=def_resp)
 with c2:
-    def_base = float(registro_previo.get('base_caja') or 100000.0) if registro_previo else 100000.0
-    base_inicial = st.number_input("Base Caja (Fondo)", value=def_base, step=1000.0, format="%d")
+    def_base = int(registro_previo.get('base_caja') or 100000) if registro_previo else 100000
+    base_inicial = st.number_input("Base Caja (Fondo)", value=int(def_base), step=1000, format="%d")
     st.caption(f"Validación: :blue[{formatear_moneda(base_inicial)}]")
 
 # --- 3. CONTEO FÍSICO (CON MEMORIA) ---
@@ -108,18 +108,18 @@ st.divider()
 st.subheader("📱 3. Nequi y Otros")
 c_in1, c_in2, c_in3 = st.columns(3)
 with c_in1:
-    def_vn = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
-    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=def_vn, step=1000.0, format="%d")
+    def_vn = int(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0
+    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=int(def_vn), step=1000, format="%d")
     st.caption(f"Confirmación: :green[{formatear_moneda(ingresos_nequi)}]")
 
 with c_in2:
-    def_sn = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
-    nequi_total_dia = st.number_input("Saldo App Nequi", value=def_sn, step=1000.0, format="%d")
+    def_sn = int(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0
+    nequi_total_dia = st.number_input("Saldo App Nequi", value=int(def_sn), step=1000, format="%d")
     st.caption(f"Confirmación: :green[{formatear_moneda(nequi_total_dia)}]")
 
 with c_in3:
-    def_casa = float(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0.0
-    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, format="%d")
+    def_casa = int(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=int(def_casa), step=1000, format="%d")
     st.caption(f"Confirmación: :green[{formatear_moneda(efectivo_en_casa)}]")
 
 # --- 6. CÁLCULOS AUTOMÁTICOS ---
