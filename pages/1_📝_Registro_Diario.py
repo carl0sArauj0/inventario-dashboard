@@ -26,9 +26,6 @@ with col_f:
 
 registro_previo = obtener_cierre_por_fecha(fecha_cierre)
 id_existente = registro_previo['id'] if registro_previo else None
-# Extraer el desglose de billetes guardado anteriormente
-registro_previo = obtener_cierre_por_fecha(fecha_cierre)
-id_existente = registro_previo['id'] if registro_previo else None
 
 if registro_previo:
     desglose_previo = registro_previo.get('desglose_efectivo') or {}
@@ -43,7 +40,8 @@ with c1:
     responsable = st.text_input("Persona Responsable", value=def_resp)
 with c2:
     def_base = float(registro_previo.get('base_caja') or 100000.0) if registro_previo else 100000.0
-    base_inicial = st.number_input("Base Caja (Fondo)", value=def_base, step=1000.0)
+    base_inicial = st.number_input("Base Caja (Fondo)", value=def_base, step=1000.0, format="%d")
+    st.caption(f"Validación: :blue[{formatear_moneda(base_inicial)}]")
 
 # --- 3. CONTEO FÍSICO (CON MEMORIA) ---
 st.subheader("💰 1. Conteo de Dinero en Caja")
@@ -52,17 +50,15 @@ col_bill, col_mon = st.columns(2)
 cant_billetes = []
 with col_bill:
     for b in BILLETES:
-        # Cargar valor previo si existe en el JSON, si no 0
         val_default = int(desglose_previo.get(f"b_{b}", 0))
-        cant = st.number_input(f"Billetes de {formatear_moneda(b)}", min_value=0, value=val_default, key=f"b_{b}_{fecha_cierre}")
+        cant = st.number_input(f"Billetes de {formatear_moneda(b)}", min_value=0, value=val_default, key=f"b_{b}_{fecha_cierre}", format="%d")
         cant_billetes.append(cant)
 
 cant_monedas = []
 with col_mon:
     for m in MONEDAS:
-        # Cargar valor previo si existe en el JSON, si no 0
         val_default = int(desglose_previo.get(f"m_{m}", 0))
-        cant = st.number_input(f"Monedas de {formatear_moneda(m)}", min_value=0, value=val_default, key=f"m_{m}_{fecha_cierre}")
+        cant = st.number_input(f"Monedas de {formatear_moneda(m)}", min_value=0, value=val_default, key=f"m_{m}_{fecha_cierre}", format="%d")
         cant_monedas.append(cant)
 
 # --- 4. TABLAS DE GASTOS Y FIADOS ---
@@ -78,8 +74,16 @@ with col_g:
     else:
         df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
     
-    pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}",
-        column_config={"Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"])})
+    pagos_editados = st.data_editor(
+        df_p_init, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key=f"p_{fecha_cierre}",
+        column_config={
+            "Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"]),
+            "Valor": st.column_config.NumberColumn("Valor ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
+        }
+    )
 
 with col_d:
     st.write("**Ventas Fiadas (Créditos)**")
@@ -89,7 +93,15 @@ with col_d:
     else:
         df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     
-    deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}")
+    deudas_editadas = st.data_editor(
+        df_d_init, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key=f"d_{fecha_cierre}",
+        column_config={
+            "Monto": st.column_config.NumberColumn("Monto ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
+        }
+    )
 
 # --- 5. INGRESOS DIGITALES Y SALDOS ---
 st.divider()
@@ -97,13 +109,18 @@ st.subheader("📱 3. Nequi y Otros")
 c_in1, c_in2, c_in3 = st.columns(3)
 with c_in1:
     def_vn = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
-    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=def_vn, step=1000.0)
+    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=def_vn, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(ingresos_nequi)}]")
+
 with c_in2:
     def_sn = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
-    nequi_total_dia = st.number_input("Saldo App Nequi", value=def_sn, step=1000.0)
+    nequi_total_dia = st.number_input("Saldo App Nequi", value=def_sn, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(nequi_total_dia)}]")
+
 with c_in3:
     def_casa = float(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0.0
-    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0)
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(efectivo_en_casa)}]")
 
 # --- 6. CÁLCULOS AUTOMÁTICOS ---
 st.divider()
@@ -140,7 +157,6 @@ if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary
     if not responsable: st.error("Ingresa responsable")
     else:
         with st.spinner("Guardando..."):
-            # CREAR EL DICCIONARIO DEL DESGLOSE PARA EL JSON
             dict_desglose = {}
             for b, cant in zip(BILLETES, cant_billetes): dict_desglose[f"b_{b}"] = cant
             for m, cant in zip(MONEDAS, cant_monedas): dict_desglose[f"m_{m}"] = cant
