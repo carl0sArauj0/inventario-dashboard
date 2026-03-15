@@ -4,25 +4,10 @@ from datetime import date
 import requests
 from streamlit_lottie import st_lottie
 import time
-import re # Para limpiar el texto
 from logic import BILLETES, MONEDAS, procesar_cierre, formatear_moneda, calcular_monto_total
 from database import guardar_cierre, guardar_pagos, obtener_cierre_por_fecha, actualizar_cierre, supabase
 
 st.set_page_config(page_title="Cierre de Caja", page_icon="📝", layout="wide")
-
-# --- FUNCIÓN ESPECIAL PARA INPUT CON COMAS ---
-def input_moneda_inteligente(label, value_def, key):
-    """Crea un cuadro de texto que muestra comas al dar Enter"""
-    # 1. Formatear el valor inicial con comas
-    val_formateado = f"{int(value_def):,}" if value_def > 0 else ""
-    
-    # 2. Crear el text_input
-    texto_usuario = st.text_input(label, value=val_formateado, key=key, help="Presiona Enter para aplicar el formato")
-    
-    # 3. Limpiar el texto (quitar comas y puntos) para convertirlo en número
-    numero_limpio = re.sub(r'[^\d]', '', texto_usuario)
-    
-    return int(numero_limpio) if numero_limpio else 0
 
 def load_lottieurl(url: str):
     try:
@@ -41,7 +26,11 @@ with col_f:
 
 registro_previo = obtener_cierre_por_fecha(fecha_cierre)
 id_existente = registro_previo['id'] if registro_previo else None
-desglose_previo = registro_previo.get('desglose_efectivo') or {} if registro_previo else {}
+
+if registro_previo:
+    desglose_previo = registro_previo.get('desglose_efectivo') or {}
+else:
+    desglose_previo = {}
 
 # --- 2. DATOS GENERALES ---
 st.divider()
@@ -50,11 +39,11 @@ with c1:
     def_resp = registro_previo.get('responsable', "") if registro_previo else ""
     responsable = st.text_input("Persona Responsable", value=def_resp)
 with c2:
-    # --- CAMBIO A INPUT INTELIGENTE ---
-    def_base = int(registro_previo.get('base_caja') or 100000) if registro_previo else 100000
-    base_inicial = input_moneda_inteligente("Base Caja (Fondo)", def_base, f"base_{fecha_cierre}")
+    def_base = float(registro_previo.get('base_caja') or 100000.0) if registro_previo else 100000.0
+    base_inicial = st.number_input("Base Caja (Fondo)", value=def_base, step=1000.0, format="%d")
+    st.caption(f"Validación: :blue[{formatear_moneda(base_inicial)}]")
 
-# --- 3. CONTEO FÍSICO ---
+# --- 3. CONTEO FÍSICO (CON MEMORIA) ---
 st.subheader("💰 1. Conteo de Dinero en Caja")
 col_bill, col_mon = st.columns(2)
 
@@ -62,7 +51,6 @@ cant_billetes = []
 with col_bill:
     for b in BILLETES:
         val_default = int(desglose_previo.get(f"b_{b}", 0))
-        # Para billetes mantenemos number_input porque son cantidades pequeñas (1, 2, 5...)
         cant = st.number_input(f"Billetes de {formatear_moneda(b)}", min_value=0, value=val_default, key=f"b_{b}_{fecha_cierre}", format="%d")
         cant_billetes.append(cant)
 
@@ -73,7 +61,7 @@ with col_mon:
         cant = st.number_input(f"Monedas de {formatear_moneda(m)}", min_value=0, value=val_default, key=f"m_{m}_{fecha_cierre}", format="%d")
         cant_monedas.append(cant)
 
-# --- 4. TABLAS ---
+# --- 4. TABLAS DE GASTOS Y FIADOS ---
 st.divider()
 st.subheader("💸 2. Gastos y Fiados")
 col_g, col_d = st.columns(2)
@@ -86,11 +74,16 @@ with col_g:
     else:
         df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
     
-    pagos_editados = st.data_editor(df_p_init, num_rows="dynamic", use_container_width=True, key=f"p_{fecha_cierre}",
+    pagos_editados = st.data_editor(
+        df_p_init, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key=f"p_{fecha_cierre}",
         column_config={
             "Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"]),
-            "Valor": st.column_config.NumberColumn("Valor ($)", format="$ %d")
-        })
+            "Valor": st.column_config.NumberColumn("Valor ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
+        }
+    )
 
 with col_d:
     st.write("**Ventas Fiadas (Créditos)**")
@@ -100,29 +93,36 @@ with col_d:
     else:
         df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     
-    deudas_editadas = st.data_editor(df_d_init, num_rows="dynamic", use_container_width=True, key=f"d_{fecha_cierre}",
+    deudas_editadas = st.data_editor(
+        df_d_init, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key=f"d_{fecha_cierre}",
         column_config={
-            "Monto": st.column_config.NumberColumn("Monto ($)", format="$ %d")
-        })
+            "Monto": st.column_config.NumberColumn("Monto ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
+        }
+    )
 
-# --- 5. INGRESOS DIGITALES (INPUTS INTELIGENTES) ---
+# --- 5. INGRESOS DIGITALES Y SALDOS ---
 st.divider()
 st.subheader("📱 3. Nequi y Otros")
 c_in1, c_in2, c_in3 = st.columns(3)
-
 with c_in1:
-    def_vn = int(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0
-    ingresos_nequi = input_moneda_inteligente("Ingreso Nequi (Venta hoy)", def_vn, f"vn_{fecha_cierre}")
+    def_vn = float(registro_previo.get('ingresos_nequi') or 0) if registro_previo else 0.0
+    ingresos_nequi = st.number_input("Ingreso Nequi (Venta hoy)", value=def_vn, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(ingresos_nequi)}]")
 
 with c_in2:
-    def_sn = int(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0
-    nequi_total_dia = input_moneda_inteligente("Saldo App Nequi", def_sn, f"sn_{fecha_cierre}")
+    def_sn = float(registro_previo.get('nequi_total_dia') or 0) if registro_previo else 0.0
+    nequi_total_dia = st.number_input("Saldo App Nequi", value=def_sn, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(nequi_total_dia)}]")
 
 with c_in3:
-    def_casa = int(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0
-    efectivo_en_casa = input_moneda_inteligente("Efectivo en Casa", def_casa, f"casa_{fecha_cierre}")
+    def_casa = float(registro_previo.get('efectivo_en_casa') or 0) if registro_previo else 0.0
+    efectivo_en_casa = st.number_input("Efectivo en Casa", value=def_casa, step=1000.0, format="%d")
+    st.caption(f"Confirmación: :green[{formatear_moneda(efectivo_en_casa)}]")
 
-# --- 6. CÁLCULOS ---
+# --- 6. CÁLCULOS AUTOMÁTICOS ---
 st.divider()
 res = procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, nequi_total_dia, efectivo_en_casa, pagos_editados.to_dict('records'), deudas_editadas.to_dict('records'))
 
@@ -162,10 +162,15 @@ if st.button("✅ GUARDAR / ACTUALIZAR", use_container_width=True, type="primary
             for m, cant in zip(MONEDAS, cant_monedas): dict_desglose[f"m_{m}"] = cant
 
             datos = {
-                "fecha": str(fecha_cierre), "base_caja": res["base_inicial"], "ingreso_efectivo": res["ingreso_efectivo"],
-                "ingresos_nequi": res["ingresos_nequi"], "efectivo_en_caja": res["efectivo_caja"],
-                "nequi_total_dia": res["nequi_total_dia"], "efectivo_en_casa": res["efectivo_en_casa"],
-                "total_venta_dia": res["venta_total"], "responsable": responsable,
+                "fecha": str(fecha_cierre), 
+                "base_caja": res["base_inicial"], 
+                "ingreso_efectivo": res["ingreso_efectivo"],
+                "ingresos_nequi": res["ingresos_nequi"], 
+                "efectivo_en_caja": res["efectivo_caja"],
+                "nequi_total_dia": res["nequi_total_dia"], 
+                "efectivo_en_casa": res["efectivo_en_casa"],
+                "total_venta_dia": res["venta_total"], 
+                "responsable": responsable,
                 "desglose_efectivo": dict_desglose 
             }
             if registro_previo:
