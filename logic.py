@@ -47,5 +47,6 @@ def procesar_cierre(base_inicial, cant_billetes, cant_monedas, ingresos_nequi, n
     }
 
 def formatear_moneda(valor):
-    if valor is None or valor == 0: return "$0"
+    if valor is None or valor == 0: 
+        return "$0"
     return f"${int(valor):,.0f}"
