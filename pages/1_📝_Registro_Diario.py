@@ -75,15 +75,15 @@ with col_g:
         df_p_init = pd.DataFrame(columns=["Concepto", "Valor", "Metodo"])
     
     pagos_editados = st.data_editor(
-        df_p_init, 
-        num_rows="dynamic", 
-        use_container_width=True, 
-        key=f"p_{fecha_cierre}",
-        column_config={
-            "Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"]),
-            "Valor": st.column_config.NumberColumn("Valor ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
-        }
-    )
+    df_p_init, 
+    num_rows="dynamic", 
+    use_container_width=True, 
+    key=f"p_{fecha_cierre}",
+    column_config={
+        "Metodo": st.column_config.SelectboxColumn(options=["Efectivo hoy", "Efectivo ayer", "Nequi"]),
+        "Valor": st.column_config.NumberColumn("Valor ($)", format="%d") # Asegura números enteros
+    }
+)
 
 with col_d:
     st.write("**Ventas Fiadas (Créditos)**")
@@ -94,15 +94,14 @@ with col_d:
         df_d_init = pd.DataFrame(columns=["Quien Debe", "Monto", "Teléfono"])
     
     deudas_editadas = st.data_editor(
-        df_d_init, 
-        num_rows="dynamic", 
-        use_container_width=True, 
-        key=f"d_{fecha_cierre}",
-        column_config={
-            "Monto": st.column_config.NumberColumn("Monto ($)", format="$ %d") # <--- FORMATO MONEDA EN TABLA
-        }
-    )
-
+    df_d_init, 
+    num_rows="dynamic", 
+    use_container_width=True, 
+    key=f"d_{fecha_cierre}",
+    column_config={
+        "Monto": st.column_config.NumberColumn("Monto ($)", format="%d") # Asegura números enteros
+    }
+)
 # --- 5. INGRESOS DIGITALES Y SALDOS ---
 st.divider()
 st.subheader("📱 3. Nequi y Otros")
