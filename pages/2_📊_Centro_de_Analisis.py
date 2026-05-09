@@ -5,6 +5,11 @@ import plotly.graph_objects as go
 from database import supabase
 from logic import formatear_moneda, BILLETES, MONEDAS
 
+# --- GUARDIÁN DE SEGURIDAD ---
+if "autenticado" not in st.session_state or not st.session_state.autenticado:
+    st.warning("⚠️ Acceso denegado. Por favor inicia sesión en la página principal (Home).")
+    st.stop()
+
 st.set_page_config(page_title="BI Cafetería - Inteligencia de Datos", page_icon="📈", layout="wide")
 
 st.markdown("""

@@ -7,6 +7,11 @@ import time
 from logic import BILLETES, MONEDAS, procesar_cierre, formatear_moneda, calcular_monto_total
 from database import guardar_cierre, guardar_pagos, obtener_cierre_por_fecha, actualizar_cierre, supabase
 
+# --- GUARDIÁN DE SEGURIDAD ---
+if "autenticado" not in st.session_state or not st.session_state.autenticado:
+    st.warning("⚠️ Acceso denegado. Por favor inicia sesión en la página principal (Home).")
+    st.stop()
+
 st.set_page_config(page_title="Cierre de Caja", page_icon="📝", layout="wide")
 
 def load_lottieurl(url: str):

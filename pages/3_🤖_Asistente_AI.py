@@ -4,6 +4,11 @@ from groq import Groq
 from database import supabase
 from logic import formatear_moneda
 
+# --- GUARDIÁN DE SEGURIDAD ---
+if "autenticado" not in st.session_state or not st.session_state.autenticado:
+    st.warning("⚠️ Acceso denegado. Por favor inicia sesión en la página principal (Home).")
+    st.stop()
+
 # Configuración de página
 st.set_page_config(page_title="AI Analista - Cafetería", page_icon="🤖", layout="centered")
 
