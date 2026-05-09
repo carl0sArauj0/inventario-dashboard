@@ -1,6 +1,7 @@
 import os
 from supabase import create_client, Client
 import streamlit as st
+import hashlib
 
 # Configuración de conexión
 def init_connection():
@@ -9,6 +10,25 @@ def init_connection():
     return create_client(url, key)
 
 supabase = init_connection()
+
+# --- FUNCIONES PARA CONFIGURACION DE CONTRASE;A ---
+
+def encriptar_password(password):
+    """Encripta la contraseña usando SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verificar_credenciales(username, password_raw):
+    """Verifica si el usuario y la contraseña coinciden en Supabase"""
+    try:
+        hash_ingresado = encriptar_password(password_raw)
+        res = supabase.table("usuarios")\
+            .select("*")\
+            .eq("username", username)\
+            .eq("password_hash", hash_ingresado)\
+            .execute()
+        return len(res.data) > 0
+    except Exception as e:
+        return False
 
 # --- FUNCIONES PARA INSERTAR DATOS ---
 
