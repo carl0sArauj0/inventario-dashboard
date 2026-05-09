@@ -3,62 +3,55 @@ import pandas as pd
 from database import obtener_resumen_mensual
 
 
-def verificar_credenciales(usuario, contraseña):
-    # Ejemplo simple de verificación de credenciales.
-    # Cambia esta lógica por la validación real contra tu base de datos.
-    return usuario == "admin" and contraseña == "password"
+def verificar_credenciales(usuario, password):
+    # Validación simple de credenciales. Actualiza según tu lógica de autenticación.
+    return usuario == "admin" and password == "admin123"
 
-# Configuración de la página
+
+# 1. Configuración de página 
 st.set_page_config(
-    page_title="Cafetería - Control de Inventario",
+    page_title="Cafetería - Login",
     page_icon="☕",
     layout="wide"
 )
 
-# Configuración de la página
-st.set_page_config(
-    page_title="Cafetería - Control de inventario",
-    page_icon="=",
-    layout="wide"
-)
-
-# --- CONTROL DE SESIÓN ---
+# 2. Inicializar estado de autenticación
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
-# --- PANTALLA DE LOGIN ---
+# 3. Lógica de Login
 if not st.session_state.autenticado:
-    st.title("🔑 Acceso al Sistema - Cafetería")
+    st.title("🔑 Acceso al Sistema")
+    
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.subheader("Inicia Sesión")
 
-    col_login, _=st.columns([1,1.5])
-    with col_login:
-        with st.form('login_form'):
-            usuario = st.text_input("Usuario")
-            contraseña = st.text_input("Contraseña", type='password')
-            boton_login = st.form_submit_button("Ingresar", use_container_width=True)
-
-            if boton_login:
-                if verificar_credenciales(usuario, contraseña):
-                    st.session_state.autenticado = True
-                    st.session_state.usuario_actual = usuario
-                    st.succes("¡Acceso concedido!")
-                    time_sleep = 1
-                    st.rerun()
+        usuario = st.text_input("Nombre de Usuario")
+        password = st.text_input("Contraseña", type="password")
+        
+        if st.button("Ingresar", use_container_width=True, type="primary"):
+            if verificar_credenciales(usuario, password):
+                st.session_state.autenticado = True
+                st.session_state.usuario_actual = usuario
+                st.success("¡Éxito! Cargando sistema...")
+                st.rerun() 
             else:
-                st.error("Usuario o contraseña incorrectos.")
-    st.stop()
+                st.error("❌ Usuario o contraseña incorrectos. Revisa el SQL y las credenciales.")
+    
+    st.stop() 
 
-# --- BARRA LATERAL ---
+# --- Funcionamiento post acceso ---
+
 with st.sidebar:
-    st.success(f"Sesión activa: {st.session_state.usuario_actual}")
-    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+    st.write(f"👤 **{st.session_state.usuario_actual}**")
+    if st.button("Cerrar Sesión"):
         st.session_state.autenticado = False
-        st.session_state.usuario_actual = None
         st.rerun()
 
-st.title("= Sistema de GEstión - Cafetería")
-
-
+st.title("☕ Sistema de Gestión - Cafetería")
 
 # --- CUERPO PRINCIPAL ---
 col1, col2 = st.columns([2, 1])
