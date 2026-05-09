@@ -38,12 +38,12 @@ if not st.session_state.autenticado:
             boton_login = st.form_submit_button("Ingresar", use_container_width=True)
 
             if boton_login:
-                if verificar_credenciales(usuario, contraseña)
-                st.session_state.autenticado = True
-                st.session_state.usuario_actual = usuario
-                st.succes("¡Acceso concedido!")
-                time_sleep = 1
-                st.rerun()
+                if verificar_credenciales(usuario, contraseña):
+                    st.session_state.autenticado = True
+                    st.session_state.usuario_actual = usuario
+                    st.succes("¡Acceso concedido!")
+                    time_sleep = 1
+                    st.rerun()
             else:
                 st.error("Usuario o contraseña incorrectos.")
     st.stop()
