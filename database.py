@@ -15,24 +15,26 @@ supabase = init_connection()
 
 def verificar_credenciales(username, password_raw):
     try:
-        username = username.strip()
-        password_raw = password_raw.strip()
+        # Limpieza de espacios
+        user_clean = username.strip()
+        pw_clean = password_raw.strip()
 
-        # 1. Encriptar
-        hash_ingresado = hashlib.sha256(password_raw.encode()).hexdigest()
+        # Encriptar
+        hash_ingresado = hashlib.sha256(pw_clean.encode()).hexdigest()
         
-        # 2. Consultar 
-        res = supabase.table("usuarios").select("password_hash").eq("username", username).execute()
+        # Consultar a Supabase
+        res = supabase.table("usuarios").select("password_hash").eq("username", user_clean).execute()
         
-        # DEBUG 
-        print(f"DB Hash: {res.data[0]['password_hash']} | App Hash: {hash_ingresado}")
-
-        if res.data and res.data[0]['password_hash'] == hash_ingresado:
-            return True
-            
+        # Validar si la lista tiene el usuario
+        if res.data and len(res.data) > 0:
+            # Comparar el hash de la DB con el generado por la App
+            if res.data[0]['password_hash'] == hash_ingresado:
+                return True
+        
         return False
+        
     except Exception as e:
-        st.error(f"Error de conexión: {e}")
+        st.error(f"Error de autenticación: {e}")
         return False
 
 # --- FUNCIONES PARA INSERTAR DATOS ---
