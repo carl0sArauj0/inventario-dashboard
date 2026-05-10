@@ -13,21 +13,21 @@ supabase = init_connection()
 
 # --- FUNCIONES PARA CONFIGURACION DE CONTRASE;A ---
 
-def encriptar_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
 def verificar_credenciales(username, password_raw):
+    """
+    Consulta la DB por el usuario, si existe entonces encripta la password ingresada y compara hashes.
+    """
     try:
-        hash_ingresado = encriptar_password(password_raw)
-        
-        res = supabase.table("usuarios").select("*").eq("username", username).execute()
-        
-        if res.data:
-            
-            return res.data[0]['password_hash'] == hash_ingresado
+        # 1. Encriptar lo que el usuario escribe en login
+        hash_ingresado = hashlib.sha256(password_raw.encode()).hexdigest()
+        # 2. Buscar usuario en la tabla
+        res = supabase.table('usuarios').select("password_hash").eq("username", username).execute()
+        # 3. Comparar
+        if res.data and res.data[0]['password_hash'] == hash_ingresado:
+            return True
         return False
     except Exception as e:
-        st.error(f"Error de conexión con la base de datos: {e}")
+        st.error('Error técnico de autenticación.')
         return False
 
 # --- FUNCIONES PARA INSERTAR DATOS ---
