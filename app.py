@@ -1,57 +1,40 @@
 import streamlit as st
 import pandas as pd
-from database import obtener_resumen_mensual
+from database import obtener_resumen_mensual, verificar_credenciales
 
 
-def verificar_credenciales(usuario, password):
-    # Validación simple de credenciales. Actualiza según tu lógica de autenticación.
-    return usuario == "admin" and password == "admin123"
+st.set_page_config(page_title="Gestión Cafetería", page_icon="☕", layout="wide")
 
-
-# 1. Configuración de página 
-st.set_page_config(
-    page_title="Cafetería - Login",
-    page_icon="☕",
-    layout="wide"
-)
-
-# 2. Inicializar estado de autenticación
+# Inicialización de sesión
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
-# 3. Lógica de Login
+# --- PANTALLA DE ACCESO ---
 if not st.session_state.autenticado:
-    st.title("🔑 Acceso al Sistema")
+    st.title("🔐 Acceso Restringido")
     
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.subheader("Inicia Sesión")
+        with st.container(border=True):
+            user = st.text_input("Usuario")
+            pw = st.text_input("Contraseña", type="password")
+            if st.button("Entrar", use_container_width=True, type="primary"):
+                if verificar_credenciales(user, pw):
+                    st.session_state.autenticado = True
+                    st.session_state.usuario_actual = user
+                    st.rerun()
+                else:
+                    st.error("Credenciales no válidas.")
+    st.stop()
 
-        usuario = st.text_input("Nombre de Usuario")
-        password = st.text_input("Contraseña", type="password")
-        
-        if st.button("Ingresar", use_container_width=True, type="primary"):
-            if verificar_credenciales(usuario, password):
-                st.session_state.autenticado = True
-                st.session_state.usuario_actual = usuario
-                st.success("¡Éxito! Cargando sistema...")
-                st.rerun() 
-            else:
-                st.error("❌ Usuario o contraseña incorrectos. Revisa el SQL y las credenciales.")
-    
-    st.stop() 
-
-# --- Funcionamiento post acceso ---
-
+# --- APP UNA VEZ LOGUEADO ---
 with st.sidebar:
-    st.write(f"👤 **{st.session_state.usuario_actual}**")
+    st.markdown(f"👤 **Usuario:** {st.session_state.usuario_actual}")
     if st.button("Cerrar Sesión"):
         st.session_state.autenticado = False
         st.rerun()
 
-st.title("☕ Sistema de Gestión - Cafetería")
+st.title("☕ Resumen Operativo")
 
 # --- CUERPO PRINCIPAL ---
 col1, col2 = st.columns([2, 1])
