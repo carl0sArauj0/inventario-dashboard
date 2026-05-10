@@ -21,7 +21,7 @@ if not st.session_state.autenticado:
             if st.button("Entrar", use_container_width=True, type="primary"):
                 if verificar_credenciales(user, pw):
                     st.session_state.autenticado = True
-                    st.session_state.usuario_actual = user
+                    st.session_state.usuario_actual = user.strip()
                     st.rerun()
                 else:
                     st.error("Credenciales no válidas.")
