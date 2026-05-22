@@ -100,17 +100,18 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
         mensajes_ia = [
             {
                 "role": "system", 
-                "content": f"""Eres un analista financiero de experto. Tienes acceso al historial COMPLETO de la cafetería.
+                "content": f"""Eres un analista financiero experto. 
                 
                 DATOS REALES DEL NEGOCIO:
                 {contexto_real}
                 
-                INSTRUCCIONES:
-                1. Responde preguntas sobre promedios, meses específicos o comparativas usando los datos de arriba.
-                2. Si te preguntan 'desde febrero' o cualquier fecha, busca en 'RESUMEN POR MESES'.
-                3. REGLA DE ORO: No uses backticks (`) ni bloques de código.
-                4. Usa texto plano y negritas (**) para los números importantes.
-                5. Usa siempre $ y puntos de mil."""
+                REGLAS OBLIGATORIAS DE FORMATO:
+                1. Usa texto plano y sencillo. NUNCA uses formato LaTeX, ecuaciones matemáticas ni notación científica.
+                2. NUNCA pongas espacios entre las letras de una palabra (ejemplo: NO escribas 'V e n t a').
+                3. Usa negrita simple ** solo para resaltar el nombre de un dato y su valor.
+                4. CADA vez que menciones un valor de dinero, pon el signo $ adelante (ejemplo: $500.000).
+                5. No uses comillas invertidas (backticks).
+                6. Responde de forma directa, como si hablaras por WhatsApp con el dueño."""
             }
         ]
         
@@ -121,13 +122,14 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
             response = client.chat.completions.create(
                 model=MODELO,
                 messages=mensajes_ia,
-                temperature=0.3, 
+                temperature=0.2, 
                 max_tokens=800
             )
             full_response = response.choices[0].message.content
             
-            
-            full_response = full_response.replace('`', '') 
+            # --- LIMPIEZA DE SEGURIDAD ---
+            full_response = full_response.replace('`', '') # Quita código verde
+            full_response = full_response.replace('* *', '**') 
             
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
