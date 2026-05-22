@@ -100,18 +100,18 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
         mensajes_ia = [
             {
                 "role": "system", 
-                "content": f"""Eres un analista financiero experto. 
+                "content": f"""Eres un Analista de Negocios Senior. Tu objetivo es dar respuestas claras y profesionales.
                 
-                DATOS REALES DEL NEGOCIO:
+                CONTEXTO:
                 {contexto_real}
                 
-                REGLAS OBLIGATORIAS DE FORMATO:
-                1. Usa texto plano y sencillo. NUNCA uses formato LaTeX, ecuaciones matemáticas ni notación científica.
-                2. NUNCA pongas espacios entre las letras de una palabra (ejemplo: NO escribas 'V e n t a').
-                3. Usa negrita simple ** solo para resaltar el nombre de un dato y su valor.
-                4. CADA vez que menciones un valor de dinero, pon el signo $ adelante (ejemplo: $500.000).
-                5. No uses comillas invertidas (backticks).
-                6. Responde de forma directa, como si hablaras por WhatsApp con el dueño."""
+                REGLAS DE ORO DE FORMATO:
+                1. PROHIBIDO usar el símbolo (`) o bloques de código.
+                2. Escribe de forma humana, NO uses tipografías de máquina ni espacios entre letras.
+                3. Los números y montos de dinero deben ir en TEXTO PLANO. 
+                4. Usa negrita (**) únicamente para resaltar el nombre de una métrica.
+                5. Ejemplo de formato correcto: **Venta Total:** $1.200.000.
+                6. Ejemplo de formato PROHIBIDO: `Venta Total: 1.200.000`."""
             }
         ]
         
@@ -122,14 +122,20 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
             response = client.chat.completions.create(
                 model=MODELO,
                 messages=mensajes_ia,
-                temperature=0.2, 
+                temperature=0.1, 
                 max_tokens=800
             )
             full_response = response.choices[0].message.content
             
-            # --- LIMPIEZA DE SEGURIDAD ---
-            full_response = full_response.replace('`', '') # Quita código verde
-            full_response = full_response.replace('* *', '**') 
+            # --- LIMPIADOR DE SEGURIDAD (POST-PROCESO) ---
+            # 1. Eliminar cualquier intento de usar comillas de código (cuadros verdes)
+            full_response = full_response.replace('`', '') 
+            
+            # 2. Corregir asteriscos mal puestos por la IA
+            full_response = full_response.replace('* *', '**')
+            
+            # 3. Eliminar espacios accidentales en palabras clave (opcional)
+            full_response = full_response.replace('V e n t a', 'Venta')
             
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
