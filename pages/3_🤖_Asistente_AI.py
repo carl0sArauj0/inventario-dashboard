@@ -18,31 +18,53 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# --- MEJORA DEL EXTRACTOR DE DATOS (Más específico para Nequi/Efectivo) ---
+# --- EXTRACTOR DE DATOS ---
 def obtener_resumen_negocio():
     try:
-        cierres_res = supabase.table("cierres").select("*").order("fecha", desc=True).limit(30).execute()
+        # 1. Traer TODOS los cierres para análisis histórico
+        cierres_res = supabase.table("cierres").select("*").order("fecha", desc=False).execute()
         df_c = pd.DataFrame(cierres_res.data)
         
-        deudas_res = supabase.table("deudas").select("*").execute()
-        df_d = pd.DataFrame(deudas_res.data)
+        if df_c.empty:
+            return "No hay datos registrados aún."
 
-        resumen = "DATOS ACTUALES DEL NEGOCIO (Últimos 30 días):\n"
-        if not df_c.empty:
-            total_v = df_c['total_venta_dia'].sum()
-            total_n = df_c['ingresos_nequi'].sum()
-            total_e = df_c['ingreso_efectivo'].sum()
-            resumen += f"- Venta Total: {formatear_moneda(total_v)}\n"
-            resumen += f"- Ventas por NEQUI: {formatear_moneda(total_n)}\n"
-            resumen += f"- Ventas por EFECTIVO: {formatear_moneda(total_e)}\n"
-            resumen += f"- Ticket promedio: {formatear_moneda(df_c['total_venta_dia'].mean())}\n"
+        df_c['fecha'] = pd.to_datetime(df_c['fecha'])
+        df_c['mes_nombre'] = df_c['fecha'].dt.strftime('%B %Y')
         
-        if not df_d.empty:
-            resumen += f"- Total en Fiados: {formatear_moneda(df_d['monto'].sum())}\n"
+        # 2. Agrupación por Mes (Análisis de largo plazo)
+        resumen_mensual = df_c.groupby(df_c['fecha'].dt.to_period('M')).agg({
+            'total_venta_dia': 'sum',
+            'ingresos_nequi': 'sum',
+            'ingreso_efectivo': 'sum'
+        }).reset_index()
         
+        # 3. Datos para el contexto de la IA
+        fecha_inicio = df_c['fecha'].min().strftime('%d de %B de %Y')
+        total_historico = df_c['total_venta_dia'].sum()
+        promedio_historico = df_c['total_venta_dia'].mean()
+        
+        # Construir el texto de contexto
+        resumen = f"HISTORIAL COMPLETO DESDE: {fecha_inicio}\n"
+        resumen += f"- Venta Total Acumulada: {formatear_moneda(total_historico)}\n"
+        resumen += f"- Venta Promedio Diaria Histórica: {formatear_moneda(promedio_historico)}\n\n"
+        
+        resumen += "RESUMEN POR MESES:\n"
+        for _, row in resumen_mensual.iterrows():
+            resumen += f"* {row['fecha']}: Total {formatear_moneda(row['total_venta_dia'])} (Nequi: {formatear_moneda(row['ingresos_nequi'])})\n"
+        
+        resumen += "\nÚLTIMOS 7 DÍAS (Detalle):\n"
+        ultimos_7 = df_c.tail(7)
+        for _, row in ultimos_7.iterrows():
+            resumen += f"* {row['fecha'].strftime('%Y-%m-%d')}: {formatear_moneda(row['total_venta_dia'])}\n"
+
+        # 4. Deudas actuales
+        deudas_res = supabase.table("deudas").select("monto").execute()
+        total_deudas = sum(d['monto'] for d in deudas_res.data)
+        resumen += f"\n- Deudas Pendientes por Cobrar: {formatear_moneda(total_deudas)}\n"
+
         return resumen
     except Exception as e:
-        return f"Error obteniendo datos: {e}"
+        return f"Error procesando datos históricos: {e}"
 
 # --- INTERFAZ DE CHAT ---
 st.title("🤖 Asistente Inteligente de Negocio")
@@ -50,7 +72,7 @@ st.title("🤖 Asistente Inteligente de Negocio")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Mensaje de Bienvenida corregido
+
 if not st.session_state.messages:
     st.info("""
     👋 **¡Hola! Soy tu analista financiero.** 
@@ -78,17 +100,17 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
         mensajes_ia = [
             {
                 "role": "system", 
-                "content": f"""Eres un analista financiero de alto nivel.
+                "content": f"""Eres un analista financiero de experto. Tienes acceso al historial COMPLETO de la cafetería.
                 
                 DATOS REALES DEL NEGOCIO:
                 {contexto_real}
                 
-                REGLAS CRÍTICAS DE FORMATO:
-                1. NUNCA uses comillas invertidas (backticks) ni bloques de código para mostrar números o texto.
-                2. Escribe de forma totalmente plana, sin cuadros verdes ni fondos grises.
-                3. Usa negrita (**) solo para resaltar nombres o totales importantes.
-                4. Usa siempre el signo $ y puntos de mil.
-                5. Responde de forma ejecutiva y directa."""
+                INSTRUCCIONES:
+                1. Responde preguntas sobre promedios, meses específicos o comparativas usando los datos de arriba.
+                2. Si te preguntan 'desde febrero' o cualquier fecha, busca en 'RESUMEN POR MESES'.
+                3. REGLA DE ORO: No uses backticks (`) ni bloques de código.
+                4. Usa texto plano y negritas (**) para los números importantes.
+                5. Usa siempre $ y puntos de mil."""
             }
         ]
         
@@ -99,12 +121,12 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
             response = client.chat.completions.create(
                 model=MODELO,
                 messages=mensajes_ia,
-                temperature=0.3, # Bajamos la temperatura para que sea menos "creativo" con el formato
+                temperature=0.3, 
                 max_tokens=800
             )
             full_response = response.choices[0].message.content
             
-            # Limpieza extra de seguridad por si la IA ignora el prompt
+            
             full_response = full_response.replace('`', '') 
             
             message_placeholder.markdown(full_response)
